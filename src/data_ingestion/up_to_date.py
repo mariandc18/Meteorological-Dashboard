@@ -9,7 +9,7 @@ weather_collection = db['weather_data']
 #weather_collection.delete_many({})
 
 # WeatherAPI configuration
-API_KEY = "1f189c3c2bb14bcd9ba31943250105"
+API_KEY = "API Key"
 LOCATION = "40.4168,-3.7038"
 HISTORY_URL = "https://api.weatherapi.com/v1/history.json"
 
