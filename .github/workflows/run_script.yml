@@ -3,8 +3,8 @@ name: Ejecutar script en Windows
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 17 * * *"
-    - cron: "30 4 * * *"
+    - cron: "0 17 * * *"  # 12:00 PM Cuba
+    - cron: "30 4 * * *"  # 11:30 PM Cuba
 
 jobs:
   run-script:
@@ -19,5 +19,8 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Instalar dependencias
+        run: pip install requests pytz pymongo
+
       - name: Ejecutar script
-        run: python .\src\data_ingestion\up_to_date.py
+        run: python src/data_ingestion/up_to_date.py
