@@ -23,7 +23,8 @@ jobs:
         run: pip install requests pytz pymongo
       
       - name: Establecer PYTHONPATH
-        run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
+        shell: bash
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
       - name: Ejecutar script
-        run: python src/data_ingestion/up_to_date.py
+        run: python -m src/data_ingestion/up_to_date.py
