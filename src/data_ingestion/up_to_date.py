@@ -11,7 +11,7 @@ weather_hourly_collection = MongoDBManager(db_name="weather_db", collection_name
 weather_daily_collection = MongoDBManager(db_name="weather_db", collection_name="weather_daily")
 
 # Configuración de WeatherAPI
-API_KEY = "1f189c3c2bb14bcd9ba31943250105"
+API_KEY = "Api Key"
 HISTORY_URL = "https://api.weatherapi.com/v1/history.json"
 CUBA_TZ = pytz.timezone("America/Havana") 
 
