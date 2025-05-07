@@ -8,6 +8,7 @@ from pages.historical.layout import historical_analysis_layout
 from pages.forecast.callbacks import register_callbacks as register_forecast_callbacks
 from pages.historical.callbacks import register_callbacks as register_historical_callbacks
 from pages.db import locations_collection, weather_hourly_collection, weather_daily_collection
+from src.serving import model_rest_api
 
 # URL del endpoint de Rest API
 API_FORECAST_URL = "http://127.0.0.1:8000/predict"
@@ -57,3 +58,5 @@ register_historical_callbacks(app)
 
 if __name__ == "__main__":
     app.run(debug=True)
+    import uvicorn
+    uvicorn.run(model_rest_api, host="0.0.0.0", port=8000, reload=True)
