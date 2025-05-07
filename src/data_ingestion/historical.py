@@ -5,169 +5,150 @@ from retry_requests import retry
 from pymongo import MongoClient
 from datetime import datetime
 from transformation import convert_time_OpenMeteoAPI, split_datetime
+from src.storage.db_manager import MongoDBManager
+import time
 
 
 # Setup the Open-Meteo API client with cache and retry on error
-cache_session = requests_cache.CachedSession('.cache', expire_after = -1)
-retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
-openmeteo = openmeteo_requests.Client(session = retry_session)
+cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
+retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+openmeteo = openmeteo_requests.Client(session=retry_session)
 
-# MongoDB connection
-client = MongoClient('mongodb://localhost:27017/')
-db = client['weather_db']
-weather_collection = db['weather_data']
-#weather_collection.delete_many({})
-locations_collection = db['locations']
+# Conexión a MongoDB
+locations_collection = MongoDBManager(db_name="weather_db", collection_name="locations")
+weather_hourly_collection = MongoDBManager(db_name="weather_db", collection_name="weather_hourly")
+weather_daily_collection = MongoDBManager(db_name="weather_db", collection_name="weather_daily")
 
-# Make sure all required weather variables are listed here
+# Crear índices optimizados para cada colección
+weather_hourly_collection.collection.create_index([("ubicacion_id", 1), ("date", 1), ("time", 1)], background=True)
+weather_daily_collection.collection.create_index([("ubicacion_id", 1), ("date", 1)], background=True)
+
+# API base URL
 url = "https://archive-api.open-meteo.com/v1/archive"
 
 def process_location(location):
     params = {
         "latitude": location["location"]["coordinates"][1],
         "longitude": location["location"]["coordinates"][0],
-        "start_date": "2025-04-13",
-        "end_date": "2025-04-27",
-        "daily": ["temperature_2m_mean", "temperature_2m_max", "temperature_2m_min", "sunrise", "sunset", "precipitation_sum", "snowfall_sum", "wind_speed_10m_max"],
-        "hourly": ["temperature_2m", "relative_humidity_2m", "dew_point_2m", "apparent_temperature", "precipitation", "cloud_cover", "wind_speed_10m", "wind_gusts_10m", "wind_direction_10m", "snowfall", "pressure_msl", "is_day"]
+        "start_date": "2020-01-01",
+        "end_date": "2023-01-01", 
+        "daily": [
+            "temperature_2m_mean", "temperature_2m_max", "temperature_2m_min",
+            "sunrise", "sunset", "precipitation_sum", "snowfall_sum", "wind_speed_10m_max"
+        ],
+        "hourly": [
+            "temperature_2m", "relative_humidity_2m", "dew_point_2m",
+            "apparent_temperature", "precipitation", "cloud_cover",
+            "wind_speed_10m", "wind_gusts_10m", "wind_direction_10m",
+            "snowfall", "pressure_msl", "is_day"
+        ]
     }
 
-    print(f"\nProcessing data for {location['municipio']}, {location['provincia']}...")
+    print(f"\nProcesando datos para {location['municipio']}, {location['provincia']}...")
     responses = openmeteo.weather_api(url, params=params)
     response = responses[0]
 
-    # Process hourly data
+    # Procesar registros horarios (hourly)
     hourly = response.Hourly()
-    hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
-    hourly_relative_humidity_2m = hourly.Variables(1).ValuesAsNumpy()
-    hourly_dew_point_2m = hourly.Variables(2).ValuesAsNumpy()
-    hourly_apparent_temperature = hourly.Variables(3).ValuesAsNumpy()
-    hourly_precipitation = hourly.Variables(4).ValuesAsNumpy()
-    hourly_cloud_cover = hourly.Variables(5).ValuesAsNumpy()
-    hourly_wind_speed_10m = hourly.Variables(6).ValuesAsNumpy()
-    hourly_wind_gusts_10m = hourly.Variables(7).ValuesAsNumpy()
-    hourly_wind_direction_10m = hourly.Variables(8).ValuesAsNumpy()
-    hourly_snowfall = hourly.Variables(9).ValuesAsNumpy()
-    hourly_pressure_msl = hourly.Variables(10).ValuesAsNumpy()
-    hourly_is_day = hourly.Variables(11).ValuesAsNumpy()
-
-    # Create date range for hourly data
     hourly_dates = pd.date_range(
-        start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
-        end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
-        freq = pd.Timedelta(seconds = hourly.Interval()),
-        inclusive = "left"
+        start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
+        end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
+        freq=pd.Timedelta(seconds=hourly.Interval()),
+        inclusive="left"
     )
-
     date_str, time_str = split_datetime(hourly_dates)
-
-    # Create hourly data dictionary with location information
     hourly_data = {
+        "ubicacion_id": [str(location["_id"])] * len(hourly_dates),
         "date": date_str,
         "time": time_str,
         "data_type": ["hourly"] * len(hourly_dates),
-        "country": [location["country"]] * len(hourly_dates),
-        "provincia": [location["provincia"]] * len(hourly_dates),
-        "municipio": [location["municipio"]] * len(hourly_dates),
-        #"location": [location["location"]] * len(hourly_dates),
-        "temperature": hourly_temperature_2m,
-        "relative_humidity": hourly_relative_humidity_2m,
-        "dew_point": hourly_dew_point_2m,
-        "apparent_temperature": hourly_apparent_temperature,
-        "precipitation": hourly_precipitation,
-        "pressure": hourly_pressure_msl,
-        "cloud_cover": hourly_cloud_cover,
-        "wind_speed": hourly_wind_speed_10m,
-        "wind_direction": hourly_wind_direction_10m,
-        "wind_gusts": hourly_wind_gusts_10m
+        "temperature": [round(val, 2) for val in hourly.Variables(0).ValuesAsNumpy()],
+        "relative_humidity": [round(val, 2) for val in hourly.Variables(1).ValuesAsNumpy()],
+        "dew_point": [round(val, 2) for val in hourly.Variables(2).ValuesAsNumpy()],
+        "apparent_temperature": [round(val, 2) for val in hourly.Variables(3).ValuesAsNumpy()],
+        "precipitation": [round(val, 2) for val in hourly.Variables(4).ValuesAsNumpy()],
+        "cloud_cover": [round(val, 0) for val in hourly.Variables(5).ValuesAsNumpy()],
+        "wind_speed": [round(val, 2) for val in hourly.Variables(6).ValuesAsNumpy()],
+        "wind_gusts": [round(val, 2) for val in hourly.Variables(7).ValuesAsNumpy()],
+        "wind_direction": [round(val, 0) for val in hourly.Variables(8).ValuesAsNumpy()],
+        "snowfall": [round(val, 2) for val in hourly.Variables(9).ValuesAsNumpy()],
+        "pressure": [round(val, 2) for val in hourly.Variables(10).ValuesAsNumpy()]
     }
-
-    hourly_dataframe = pd.DataFrame(data = hourly_data)
-
-    # Process daily data
-    daily = response.Daily()
-    daily_temperature_2m_mean = daily.Variables(0).ValuesAsNumpy()
-    daily_temperature_2m_max = daily.Variables(1).ValuesAsNumpy()
-    daily_temperature_2m_min = daily.Variables(2).ValuesAsNumpy()
-    daily_sunrise = daily.Variables(3).ValuesInt64AsNumpy()
-    daily_sunset = daily.Variables(4).ValuesInt64AsNumpy()
-    daily_precipitation_sum = daily.Variables(5).ValuesAsNumpy()
-    daily_snowfall_sum = daily.Variables(6).ValuesAsNumpy()
-    daily_wind_speed_10m_max = daily.Variables(7).ValuesAsNumpy()
-
-    # Create date range for daily data
-    daily_dates = pd.date_range(
-        start = pd.to_datetime(daily.Time(), unit = "s", utc = True),
-        end = pd.to_datetime(daily.TimeEnd(), unit = "s", utc = True),
-        freq = pd.Timedelta(seconds = daily.Interval()),
-        inclusive = "left"
-    )
-
-    date_str, _ = split_datetime(daily_dates)
-
-    # Create daily data dictionary with location information
-    daily_data = {
-        "date": date_str,
-        "data_type": ["daily"] * len(daily_dates),
-        "country": [location["country"]] * len(daily_dates),
-        "provincia": [location["provincia"]] * len(daily_dates),
-        "municipio": [location["municipio"]] * len(daily_dates),
-        #"location": [location["location"]] * len(daily_dates),
-        "temperature_mean": daily_temperature_2m_mean,
-        "temperature_max": daily_temperature_2m_max,
-        "temperature_min": daily_temperature_2m_min,
-        "sunrise": [convert_time_OpenMeteoAPI(ts) for ts in daily_sunrise],
-        "sunset": [convert_time_OpenMeteoAPI(ts) for ts in daily_sunset],
-        "precipitation_sum": daily_precipitation_sum,
-        "snowfall_sum": daily_snowfall_sum,
-        "wind_speed_10m_max": daily_wind_speed_10m_max   
-    }
-
-    daily_dataframe = pd.DataFrame(data = daily_data)
-    return pd.concat([hourly_dataframe, daily_dataframe], ignore_index=True)
-
-# Get all locations from MongoDB
-locations = list(locations_collection.find({}))
-print(f"Found {len(locations)} locations to process")
-
-# Process each location
-for location in locations:
-    print(f"\nProcessing data for {location['municipio']}, {location['provincia']}...")
-    combined_dataframe = process_location(location)
-    weather_records = combined_dataframe.to_dict('records')
-
-    # Check for existing records for this location
-    existing_hourly = set((doc['date'], doc.get('time', ''), doc['municipio']) 
-                        for doc in weather_collection.find(
-                            {'data_type': 'hourly', 'municipio': location['municipio']},
-                            {'date': 1, 'time': 1, 'municipio': 1, '_id': 0}
-                        ))
+    hourly_df = pd.DataFrame(hourly_data)
     
-    existing_daily = set((doc['date'], doc['municipio']) 
-                       for doc in weather_collection.find(
-                           {'data_type': 'daily', 'municipio': location['municipio']},
-                           {'date': 1, 'municipio': 1, '_id': 0}
-                       ))
+    # Procesar registros diarios (daily)
+    daily = response.Daily()
+    daily_dates = pd.date_range(
+        start=pd.to_datetime(daily.Time(), unit="s", utc=True),
+        end=pd.to_datetime(daily.TimeEnd(), unit="s", utc=True),
+        freq=pd.Timedelta(seconds=daily.Interval()),
+        inclusive="left"
+    )
+    date_str_daily, _ = split_datetime(daily_dates)
+    daily_data = {
+        "ubicacion_id": [str(location["_id"])] * len(daily_dates),
+        "date": date_str_daily,
+        "data_type": ["daily"] * len(daily_dates),
+        "temperature_mean": [round(val, 2) for val in daily.Variables(0).ValuesAsNumpy()],
+        "temperature_max": [round(val, 2) for val in daily.Variables(1).ValuesAsNumpy()],
+        "temperature_min": [round(val, 2) for val in daily.Variables(2).ValuesAsNumpy()],
+        "sunrise": [convert_time_OpenMeteoAPI(ts) for ts in daily.Variables(3).ValuesInt64AsNumpy()],
+        "sunset": [convert_time_OpenMeteoAPI(ts) for ts in daily.Variables(4).ValuesInt64AsNumpy()],
+        "precipitation_sum": [round(val, 2) for val in daily.Variables(5).ValuesAsNumpy()],
+        "snowfall_sum": [round(val, 2) for val in daily.Variables(6).ValuesAsNumpy()],
+        "wind_speed_10m_max": [round(val, 2) for val in daily.Variables(7).ValuesAsNumpy()]
+    }
+    daily_df = pd.DataFrame(daily_data)
 
-    new_records = []
-    for record in weather_records:
-        if record['data_type'] == 'hourly':
-            if (record['date'], record['time'], record['municipio']) not in existing_hourly:
-                new_records.append(record)
-        else:
-            if (record['date'], record['municipio']) not in existing_daily:
-                new_records.append(record)
+    return hourly_df, daily_df
 
-    if new_records:
-        print(f"Inserting {len(new_records)} new records for {location['municipio']}...")
-        weather_collection.insert_many(new_records)
-        print(f"Data successfully inserted for {location['municipio']}!")
+try:
+    locations = list(locations_collection.collection.find({}))
+    print(f"Se encontraron {len(locations)} ubicaciones.")
+except Exception as e:
+    print(f"Error al obtener ubicaciones: {e}")
+    exit()
+
+# Cargar los registros existentes en cada colección para evitar inserciones duplicadas
+existing_hourly = set((doc['ubicacion_id'], doc['date'], doc.get('time', '')) for doc in weather_hourly_collection.collection.find(
+        {}, {'ubicacion_id': 1, 'date': 1, 'time': 1, '_id': 0}))
+
+existing_daily = set((doc['ubicacion_id'], doc['date']) for doc in weather_daily_collection.collection.find(
+        {}, {'ubicacion_id': 1, 'date': 1, '_id': 0}))
+
+# Procesar cada ubicación e insertar datos en las colecciones correspondientes
+for location in locations:
+    hourly_df, daily_df = process_location(location)
+
+    # Procesar e insertar registros "hourly"
+    hourly_records = hourly_df.to_dict('records')
+    new_hourly = []
+    for record in hourly_records:
+        key = (record['ubicacion_id'], record['date'], record.get('time', ''))
+        if key not in existing_hourly:
+            new_hourly.append(record)
+    if new_hourly:
+        weather_hourly_collection.insert_many(new_hourly)
+        print(f"Insertados {len(new_hourly)} registros del tipo hourly para {location['municipio']}.")
     else:
-        print(f"No new records to insert for {location['municipio']}. All data already exists in the database.")
+        print(f"Sin registros nuevos del tipo hourly para {location['municipio']}.")
 
-print(f"\nDatabase statistics:")
-print(f"Total records in database: {weather_collection.count_documents({})}")
-print(f"Hourly records: {weather_collection.count_documents({'data_type': 'hourly'})}")
-print(f"Daily records: {weather_collection.count_documents({'data_type': 'daily'})}")
+    # Procesar e insertar registros "daily"
+    daily_records = daily_df.to_dict('records')
+    new_daily = []
+    for record in daily_records:
+        key = (record['ubicacion_id'], record['date'])
+        if key not in existing_daily:
+            new_daily.append(record)
+    if new_daily:
+        weather_daily_collection.insert_many(new_daily)
+        print(f"Insertados {len(new_daily)} registros del tipo daily para {location['municipio']}.")
+    else:
+        print(f"Sin registros nuevos del tipo daily para {location['municipio']}.")
 
-client.close() 
+    time.sleep(2)  # Pequeña espera 
+
+# Cerrar conexiones
+weather_hourly_collection.close_connection()
+weather_daily_collection.close_connection()
+locations_collection.close_connection()
