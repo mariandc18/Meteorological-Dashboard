@@ -21,10 +21,10 @@ jobs:
 
       - name: Instalar dependencias
         run: pip install requests pytz pymongo
-      
+
       - name: Establecer PYTHONPATH
         shell: bash
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
       - name: Ejecutar script
-        run: python -m src/data_ingestion/up_to_date.py
+        run: python -m src.data_ingestion.up_to_date
