@@ -63,6 +63,21 @@ class MongoDBManager:
         except (PyMongoError, InvalidId) as e:  # Captura múltiple
             print(f"Error al leer documento: {e}")
             return None
+        
+    def insert_many(self, documents):
+        try:
+            if not isinstance(documents, list) or not all(isinstance(doc, dict) for doc in documents):
+                raise ValueError("Debe ser una lista de diccionarios")
+            for doc in documents:
+                if any(key.startswith('$') for key in doc):
+                    raise ValueError("Operadores prohibidos en alguno de los documentos")
+
+            result = self.collection.insert_many(documents)  # Insertar múltiples documentos
+            return [str(inserted_id) for inserted_id in result.inserted_ids]  # Devolver IDs insertados como cadenas
+        except (PyMongoError, ValueError) as e:
+            print(f"Error al insertar múltiples documentos: {e}")
+            return None
+        
 
     def update_document(self, document_id, update_data):
         try:
@@ -102,3 +117,4 @@ class MongoDBManager:
             self.db = None
             self.collection = None
             print("Conexión cerrada")
+        
