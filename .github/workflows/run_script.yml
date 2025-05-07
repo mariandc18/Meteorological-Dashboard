@@ -1,0 +1,23 @@
+name: Ejecutar script en Windows
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 17 * * *"
+    - cron: "30 4 * * *"
+
+jobs:
+  run-script:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Ejecutar script
+        run: python .\src\data_ingestion\up_to_date.py
