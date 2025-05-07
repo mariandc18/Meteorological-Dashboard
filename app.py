@@ -14,6 +14,7 @@ API_FORECAST_URL = "http://127.0.0.1:8000/predict"
 
 # Creación de la app
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
+server = app.server
 app.title = "Weather Dashboard"
 
 # Layout principal
