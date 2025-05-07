@@ -4,7 +4,7 @@ import pandas as pd
 from retry_requests import retry
 from pymongo import MongoClient
 from datetime import datetime
-from transformation import convert_time_OpenMeteoAPI, split_datetime
+from src.transformation.transformation import convert_time_OpenMeteoAPI, split_datetime
 from src.storage.db_manager import MongoDBManager
 import time
 
