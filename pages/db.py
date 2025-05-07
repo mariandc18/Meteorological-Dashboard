@@ -1,4 +1,4 @@
-from db_manager import MongoDBManager
+from src.storage.db_manager import MongoDBManager
 
 # Conexión única a MongoDB, accesible desde toda la aplicación
 locations_collection = MongoDBManager(db_name="weather_db", collection_name="locations")
