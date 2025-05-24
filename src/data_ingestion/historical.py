@@ -77,10 +77,10 @@ def process_location(location):
 
     responses = openmeteo.weather_api(url, params=params)
     response = responses[0]
-    hourly_data, daily_data = transformar_datos(response, location)
+    hourly_data, daily_data = transform_data(response, location)
     return hourly_data, daily_data
 
-def transformar_datos(response, location):
+def transform_data(response, location):
     hourly = response.Hourly()
     hourly_dates = pd.date_range(
         start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
