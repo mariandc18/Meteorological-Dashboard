@@ -6,9 +6,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 import time
-from tables import WeatherDaily, WeatherHourly, Base
+from src.storage.tables import WeatherDaily, WeatherHourly, Base
 from transformation import convert_time_OpenMeteoAPI, round_to_two_decimals 
-from config import DATABASE_URL
+from src.storage.config import DATABASE_URL
 
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
