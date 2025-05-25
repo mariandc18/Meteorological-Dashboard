@@ -3,6 +3,16 @@ from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
+class Ubicacion(Base):
+    __tablename__ = 'locations'
+
+    id = Column(Integer, primary_key=True)
+    country = Column(String, nullable=False)
+    province = Column(String, nullable=False)
+    municipality = Column(String, nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    
 class WeatherHourly(Base):
     __tablename__ = 'weather_hourly'
     id = Column(Integer, primary_key=True, autoincrement=True)
