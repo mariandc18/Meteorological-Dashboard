@@ -1,5 +1,8 @@
-from sqlalchemy import Column, Integer, Float, String, DateTime
+from sqlalchemy import Column, Integer, Float, String, DateTime, Text, Enum
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
+import datetime
 
 Base = declarative_base()
 
@@ -67,3 +70,21 @@ class Cyclones(Base):
     usa_poci = Column(Integer, nullable=True)
     dist2land = Column(Float, nullable=False)
     landfall = Column(Integer, nullable=True)
+    
+class User(Base):
+    __tablename__ = 'users'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    cookie_uid = Column(UUID(as_uuid=True), unique=True, nullable=False)  
+    email = Column(Text, nullable=True)
+    username = Column(Text, nullable=True)
+    password_hash = Column(Text, nullable=True)
+    role = Column(Enum('guest', 'user', 'admin', name='user_roles'), nullable=False, default='guest')
+    analysis_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    ip_address = Column(Text, nullable=True)
+    user_agent = Column(Text, nullable=True)
+    last_access = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<User(id={self.id}, role={self.role}, cookie_uid={self.cookie_uid})>"
