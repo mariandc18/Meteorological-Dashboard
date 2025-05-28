@@ -4,15 +4,15 @@ cyclone_layout = html.Div([
     html.H2("Análisis de Ciclones que han pasado por Cuba"),
 
     html.Label("Selecciona una temporada:"),
-    dcc.Slider(
-        id='season-slider',
-        min=2000,
-        max=2025,
-        step=1,
-        value=2000,
-        marks={i: str(i) for i in range(2000, 2026, 5)},
-        tooltip={"placement": "bottom", "always_visible": False}
-    ),
+    dcc.RangeSlider(
+    id='season-slider',
+    min=2000,
+    max=2025,
+    step=1,
+    value=[2000, 2005],
+    marks={i: str(i) for i in range(2000, 2026, 5)},
+    tooltip={"placement": "bottom", "always_visible": False}
+),
 
     html.Br(),
     
