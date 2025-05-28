@@ -3,7 +3,7 @@ import plotly.express as px
 import pandas as pd
 from sqlalchemy.orm import Session
 from tables import CycloneTrajectory
-from pages.db import get_db_session 
+from pages.db import get_db_session  
 import plotly.graph_objects as go
 
 def register_callbacks(app):
@@ -26,6 +26,7 @@ def register_callbacks(app):
         if not name:
             fig = go.Figure(go.Scattermapbox())
             fig.update_layout(mapbox_style="open-street-map", mapbox_zoom=3, mapbox_center={"lat": 21.5, "lon": -79.5})
+            fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
             return fig
 
         df = pd.read_sql(
@@ -39,19 +40,59 @@ def register_callbacks(app):
         return fig
 
     @app.callback(
-        Output('cyclone-wind-pressure', 'figure'),
-        Input('cyclone-dropdown', 'value'),
-        Input('season-slider', 'value')
-    )
-    def wind_pressure_plot(name, season):
+    Output('graph-sshs', 'figure'),
+    Output('graph-dist2land', 'figure'),
+    Output('graph-landfall', 'figure'),
+    Input('cyclone-dropdown', 'value'),
+    Input('season-slider', 'value')
+)
+    def cyclone_details_plot(name, season):
         session = get_db_session()
         if not name:
-            return px.line()
+            empty_fig = px.line()
+            return empty_fig, empty_fig, empty_fig
+
         df = pd.read_sql(
             session.query(CycloneTrajectory)
-                   .filter_by(name=name, season=season)
+                .filter_by(name=name, season=season)
+                .order_by(CycloneTrajectory.iso_time)
+                .statement, session.bind
+        )
+
+        fig_sshs = px.line(df, x='iso_time', y='usa_sshs',
+                        title='Categoría SSHS',
+                        labels={'iso_time': 'Fecha', 'usa_sshs': 'Categoría Saffir-Simpson'})
+
+        fig_dist2land = px.line(df, x='iso_time', y='dist2land',
+                        title='Distancia a Tierra',
+                        labels={'iso_time': 'Fecha', 'dist2land': 'Distancia (km)'})
+
+        fig_landfall = px.line(df, x='iso_time', y='landfall',
+                            title='Landfall',
+                            labels={'iso_time': 'Fecha', 'landfall': 'Landfall'})
+
+        return fig_sshs, fig_dist2land, fig_landfall
+
+
+    @app.callback(
+        Output('all-cyclones-paths', 'figure'),
+        Output('wind-comparison', 'figure'),
+        Output('pressure-comparison', 'figure'),
+        Input('season-slider', 'value')
+    )
+    def compare_cyclones(season):
+        session = get_db_session()
+        df = pd.read_sql(
+            session.query(CycloneTrajectory)
+                   .filter_by(season=season)
                    .statement, session.bind
         )
-        fig = px.line(df, x='iso_time', y=['usa_wind', 'usa_pres'],
-                      labels={'value': 'Intensidad', 'variable': 'Variable'})
-        return fig
+        df['step'] = df.groupby('name').cumcount()
+        fig_paths = px.line_mapbox(df, lat='lat', lon='lon', color='name', hover_data=['step'],
+                                   zoom=3, height=400)
+        fig_paths.update_layout(mapbox_style='open-street-map')
+
+        wind_fig = px.line(df, x='step', y='usa_wind', color='name', title='Comparación de Viento')
+        pres_fig = px.line(df, x='step', y='usa_pres', color='name', title='Comparación de Presión')
+
+        return fig_paths, wind_fig, pres_fig
