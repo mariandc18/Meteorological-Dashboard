@@ -9,6 +9,7 @@ from pages.historical.callbacks import register_callbacks as register_historical
 from pages.auth.login_callback import register_login_callbacks
 from pages.auth.register_callback import register_register_callbacks
 from pages.cyclones.callbacks import register_callbacks as register_cyclones_callbacks
+from pages.cyclones.layout import cyclone_layout
 from src.storage.config import DATABASE_URL
 
 def get_db_connection():
