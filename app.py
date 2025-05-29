@@ -19,6 +19,7 @@ def get_db_connection():
 
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
 app.title = "Weather Dashboard"
+server = app.server
 
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
