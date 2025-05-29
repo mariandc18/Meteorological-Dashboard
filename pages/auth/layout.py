@@ -2,6 +2,7 @@ from dash import html, dcc
 
 auth_layout = html.Div([
     html.H2("Weather Dashboard 🌦️"),
+    dcc.Store(id="user-session"),
     html.Div([
         html.H4("Iniciar Sesión"),
         dcc.Input(id="login-username", type="text", placeholder="Usuario", debounce=True),

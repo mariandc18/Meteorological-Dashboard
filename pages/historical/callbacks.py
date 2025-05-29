@@ -1,52 +1,78 @@
 from dash import Input, Output
 import pandas as pd
 import plotly.express as px
-from pages.db import locations_collection, weather_hourly_collection, weather_daily_collection
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import text
+from pages.db import engine
+from tables import UserInteraction
+from datetime import datetime
+import uuid
+from pages.tracking import log_interaction
 
+Session = sessionmaker(bind=engine)
 
 def register_callbacks(app):
     @app.callback(
         Output("provincia", "options"),
-        Input("url", "pathname")
+        Input("url", "pathname"),
+        Input("user-session", "data") 
     )
-    def update_provincia_options(pathname):
+    def update_provincia_options(pathname, user_data):
         if pathname != "/historical_analysis":
             return []
-        df = pd.DataFrame(list(locations_collection.collection.find({})))
-        df["provincia"] = df["provincia"].astype(str).str.strip()
-        provs = sorted(df["provincia"].unique())
-        return [{"label": prov, "value": prov} for prov in provs]
+
+        session = Session()
+        provs = session.execute(text("SELECT DISTINCT province FROM locations")).fetchall()
+        session.close()
+
+        user_id = user_data.get("user_id") if user_data else None
+        log_interaction(user_id, "historical", "provincia_dropdown", "ver opciones")
+
+        return [{"label": p[0], "value": p[0]} for p in sorted(provs)]
 
     @app.callback(
         Output("municipio", "options"),
-        Input("provincia", "value")
+        Input("provincia", "value"),
+        Input("user-session", "data")
     )
-    def update_municipio_options(selected):
-        df = pd.DataFrame(list(locations_collection.collection.find({})))
-        df["provincia"] = df["provincia"].astype(str).str.strip()
-        df["municipio"] = df["municipio"].astype(str).str.strip()
+    def update_municipio_options(selected, user_data):
         if not selected:
             return []
-        mun = sorted(df[df["provincia"] == selected]["municipio"].unique())
-        return [{"label": m, "value": m} for m in mun]
+
+        session = Session()
+        mun = session.execute(
+            text("SELECT DISTINCT municipality FROM locations WHERE province = :province"),
+            {"province": selected}
+        ).fetchall()
+        session.close()
+
+        # Registrar interacción
+        user_id = user_data.get("user_id") if user_data else None
+        log_interaction(user_id, "historical", "municipio_dropdown", selected)
+
+        return [{"label": m[0], "value": m[0]} for m in sorted(mun)]
 
     @app.callback(
         Output("variable", "options"),
-        Input("data-type", "value")
+        Input("data-type", "value"),
+        Input("user-session", "data")
     )
-    def update_variable_options(data_type):
-        if data_type == "hourly":
-            vals = [
-                "temperature", "relative_humidity", "dew_point", "apparent_temperature",
-                "precipitation", "cloud_cover", "wind_speed", "wind_gusts", "wind_direction",
-                "snowfall", "pressure"
-            ]
-        else:
-            vals = [
-                "temperature_mean", "temperature_max", "temperature_min",
-                "sunrise", "sunset", "precipitation_sum", "snowfall_sum", "wind_speed_10m_max"
-            ]
-        return [{"label": v.replace("_", " ").title(), "value": v} for v in vals]
+    def update_variable_options(data_type, user_data):
+        WeatherTable = "weather_hourly" if data_type == "hourly" else "weather_daily"
+
+        session = Session()
+        columns = session.execute(
+            text("SELECT column_name FROM information_schema.columns WHERE table_name = :table"),
+            {"table": WeatherTable}
+        ).fetchall()
+        session.close()
+
+        exclude_columns = {"ubicacion_id", "date", "time"}
+
+        user_id = user_data.get("user_id") if user_data else None
+        log_interaction(user_id, "historical", "variable_dropdown", data_type)
+
+        return [{"label": col[0], "value": col[0]} for col in columns if col[0] not in exclude_columns]
 
     @app.callback(
         Output("weather-graph", "figure"),
@@ -57,52 +83,49 @@ def register_callbacks(app):
             Input("date-picker-range", "start_date"),
             Input("date-picker-range", "end_date"),
             Input("agregacion", "value"),
-            Input("variable", "value")
+            Input("variable", "value"),
+            Input("user-session", "data")  
         ]
     )
-    def update_graph(data_type, prov, mun, start, end, agg, var):
+    def update_graph(data_type, prov, mun, start, end, agg, var, user_data):
+        WeatherTable = "weather_hourly" if data_type == "hourly" else "weather_daily"
+
+        if not prov or not mun:
+            return px.scatter(title="Debe seleccionar una provincia y un municipio")
+
         if not var:
             var = "temperature" if data_type == "hourly" else "temperature_mean"
-        
-        # Filtrar ubicaciones según los datos seleccionados
-        filt = {}
-        if prov:
-            filt["provincia"] = prov
-        if mun:
-            filt["municipio"] = mun
-        locs = list(locations_collection.collection.find(filt))
-        ids = [str(d["_id"]) for d in locs]
+
+        session = Session()
+        ids = session.execute(
+            text("SELECT id FROM locations WHERE province = :province AND municipality = :municipality"),
+            {"province": prov, "municipality": mun}
+        ).fetchall()
+        session.close()
+
+        ids = tuple(str(d[0]) for d in ids)
+
         if not ids:
             return px.scatter(title="No hay ubicaciones para ese filtro")
-        
-        coll = weather_hourly_collection if data_type == "hourly" else weather_daily_collection
-        df = pd.DataFrame(list(coll.collection.find({"ubicacion_id": {"$in": ids}})))
-        if df.empty:
-            return px.scatter(title="Sin datos para esos filtros")
-        df["date"] = pd.to_datetime(df["date"])
-        if start:
-            df = df[df["date"] >= start]
-        if end:
-            df = df[df["date"] <= end]
-        if df.empty:
+
+        session = Session()
+        query = text(f"SELECT date, {var} FROM {WeatherTable} WHERE ubicacion_id::TEXT IN :ids AND date >= :start AND date <= :end")
+        params = {"ids": ids, "start": start, "end": end}
+
+        results = session.execute(query, params).fetchall()
+        session.close()
+
+        if not results:
             return px.scatter(title="Sin datos en el rango de fechas")
-        
-        if agg == "day":
-            df["period"] = df["date"].dt.to_period("D").astype(str)
-        elif agg == "month":
-            df["period"] = df["date"].dt.to_period("M").astype(str)
-        elif agg == "year":
-            df["period"] = df["date"].dt.year.astype(str)
-        
+
+        df = pd.DataFrame(results, columns=["date", var])
+        df["date"] = pd.to_datetime(df["date"])
+        df["period"] = df["date"].dt.to_period(agg[0].upper()).astype(str)
         grp = df.groupby("period")[var].mean().reset_index()
-        
-        if agg == "day":
-            period_label = "Día"
-        elif agg == "month":
-            period_label = "Mes"
-        else:
-            period_label = "Año"
-        
-        fig = px.line(grp, x="period", y=var, title=f"{var.replace('_', ' ').title()} promedio por {period_label}")
+
+        user_id = user_data.get("user_id") if user_data else None
+        log_interaction(user_id, "historical", "weather_graph", f"Datos desde {start} hasta {end}")
+
+        fig = px.line(grp, x="period", y=var, title=f"{var.replace('_', ' ').title()} promedio por {agg.title()}")
         fig.update_layout(xaxis_title="Periodo", yaxis_title=var)
         return fig

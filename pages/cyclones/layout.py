@@ -2,6 +2,7 @@ from dash import dcc, html
 
 cyclone_layout = html.Div([
     html.H2("Análisis de Ciclones que han pasado por Cuba"),
+    dcc.Store(id="user-session"),
 
     html.Label("Selecciona una temporada:"),
     dcc.RangeSlider(
