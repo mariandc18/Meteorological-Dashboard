@@ -10,6 +10,8 @@ from pages.auth.login_callback import register_login_callbacks
 from pages.auth.register_callback import register_register_callbacks
 from pages.cyclones.callbacks import register_callbacks as register_cyclones_callbacks
 from pages.cyclones.layout import cyclone_layout
+from pages.admin.callbacks import register_callbacks as register_admin_callbacks
+from pages.admin.layout import admin_layout
 from src.storage.config import DATABASE_URL
 
 def get_db_connection():
@@ -36,13 +38,14 @@ def layout_with_sidebar(content, role):
         dcc.Link("Análisis histórico del clima 📈", href="/historical_analysis"),
         html.Br(),
         dcc.Link("Pronóstico del tiempo ⛅", href="/forecast"),
+        html.Br(),
+        dcc.Link("Eventos meteorológicos 🌪️", href="/cyclones"),
     ]
 
-    # Solo para usuarios logueados (no guests)
-    if role in ("user", "admin"):
+    if role == "admin":
         links.extend([
             html.Br(),
-            dcc.Link("Eventos meteorológicos 🌪️", href="/cyclones")
+            dcc.Link("📊 Estadísticas de la página", href="/admin_page")
         ])
 
     return html.Div([
@@ -61,12 +64,14 @@ def layout_with_sidebar(content, role):
 def display_page(pathname, role):
     if role is None:
         return auth_layout
-    if pathname == "/forecast":
+    elif pathname == "/forecast":
         return layout_with_sidebar(forecast_layout, role)
     elif pathname == "/historical_analysis":
         return layout_with_sidebar(historical_analysis_layout, role)
     elif pathname == "/cyclones":
         return layout_with_sidebar(cyclone_layout, role)
+    elif pathname == "/admin_page" and role == "admin":  
+        return layout_with_sidebar(admin_layout, role)
     else:
         return layout_with_sidebar(default_main_content(), role)
 
@@ -75,6 +80,7 @@ register_historical_callbacks(app)
 register_login_callbacks(app)
 register_register_callbacks(app)
 register_cyclones_callbacks(app)
+register_admin_callbacks(app)
 
 if __name__ == "__main__":
     app.run(debug=True)
