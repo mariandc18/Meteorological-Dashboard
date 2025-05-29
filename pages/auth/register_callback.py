@@ -1,9 +1,5 @@
-from dash import Input, Output, State, dcc
+from dash import Input, Output, State
 from auth.authentication_manager import AuthManager
-from dash.exceptions import PreventUpdate
-from flask import make_response
-from auth.session import set_uid_cookie
-import uuid
 
 auth_manager = AuthManager()
 
@@ -28,18 +24,3 @@ def register_register_callbacks(app):
             return "Registro exitoso."
         except Exception as e:
             return f"Error al registrar usuario: {str(e)}"
-
-def register_guest_callbacks(app):
-    @app.callback(
-        Output("login-message", "children"),
-        Input("guest-button", "n_clicks"),
-        prevent_initial_call=True
-    )
-    def handle_guest(n_clicks):
-        if not n_clicks:
-            raise PreventUpdate
-
-        uid = str(uuid.uuid4()) 
-        response = make_response()
-        set_uid_cookie(response, uid)
-        return dcc.Location(href="/", id="redirect-guest")
