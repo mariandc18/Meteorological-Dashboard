@@ -1,13 +1,17 @@
 from security import hash_password, verify_password, generate_uid, validate_password
-from src.storage.tables import User
-from sqlalchemy.orm import Session
+from src.storage.tables import User, Base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime
+from src.storage.config import DATABASE_URL
 
 class AuthManager:
-    def __init__(self, db_session=None):
+    def __init__(self, db_session: Session = None):
         if db_session is None:
-            from pages.db import get_db_session
-            self.db: Session = get_db_session()
+            self.engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
+            Base.metadata.create_all(self.engine)
+            SessionLocal = sessionmaker(bind=self.engine)
+            self.db = SessionLocal()
         else:
             self.db = db_session
 
@@ -23,7 +27,7 @@ class AuthManager:
         new_user = User(
             username=username,
             email=email,
-            password_hash=hashed_pw, 
+            password_hash=hashed_pw,
             role='user',
             cookie_uid=generate_uid(),  # debe devolver string UUID
             created_at=datetime.utcnow()
@@ -40,3 +44,6 @@ class AuthManager:
             self.db.commit()
             return user
         return None
+
+    def close(self):
+        self.db.close()
