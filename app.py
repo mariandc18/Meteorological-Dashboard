@@ -1,60 +1,86 @@
 import dash
-from dash import dcc, html, Input, Output
-import pandas as pd
-import requests
-from src.storage.db_manager import MongoDBManager
+from dash import dcc, html, Input, Output, State
+import psycopg2
 from pages.forecast.layout import forecast_layout
 from pages.historical.layout import historical_analysis_layout
+from pages.auth.layout import auth_layout
 from pages.forecast.callbacks import register_callbacks as register_forecast_callbacks
 from pages.historical.callbacks import register_callbacks as register_historical_callbacks
-from pages.db import locations_collection, weather_hourly_collection, weather_daily_collection
-#from src.serving import model_rest_api
+from pages.auth.login_callback import register_login_callbacks
+from pages.auth.register_callback import register_register_callbacks
+from pages.cyclones.callbacks import register_callbacks as register_cyclones_callbacks
+from pages.cyclones.layout import cyclone_layout
+from pages.admin.callbacks import register_callbacks as register_admin_callbacks
+from pages.admin.layout import admin_layout
+from src.storage.config import DATABASE_URL
 
-# URL del endpoint de Rest API
-API_FORECAST_URL = "http://127.0.0.1:8000/predict"
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
 
-# Creación de la app
 app = dash.Dash(__name__, suppress_callback_exceptions=True)
-server = app.server
 app.title = "Weather Dashboard"
 
-# Layout principal
 app.layout = html.Div([
-    html.Div([
-        html.H2("Menú principal"),
+    dcc.Location(id="url", refresh=False),
+    dcc.Store(id="session-role", data=None),
+    html.Div(id="page-content")
+])
+
+def default_main_content():
+    return html.Div([
+        html.H1("Análisis y predicción del clima de Cuba"),
+        html.P("Este dashboard ofrece información sobre la evolución del clima por más de 30 años. Tiene en cuenta varias variables meteorológicas, desde temperatura, viento, humedad, precipitaciones, rocío, entre otras."),
+        html.P("Puede analizar registros históricos o consultar el pronóstico del clima para las próximas horas."),
+        html.Img(src="/assets/clima.png", style={"width": "85%", "display": "block", "margin": "auto"})
+    ])
+def layout_with_sidebar(content, role):
+    links = [
         dcc.Link("Análisis histórico del clima 📈", href="/historical_analysis"),
         html.Br(),
         dcc.Link("Pronóstico del tiempo ⛅", href="/forecast"),
-    ], className="sidebar"),
+        html.Br(),
+        dcc.Link("Eventos meteorológicos 🌪️", href="/cyclones"),
+    ]
 
-    html.Div([
-        dcc.Location(id="url", refresh=False),
-        html.Div(id="page-content")
-    ], className="content")
-])
+    if role == "admin":
+        links.extend([
+            html.Br(),
+            dcc.Link("📊 Estadísticas de la página", href="/admin_page")
+        ])
 
-default_layout = html.Div([
-    html.H1("Análisis y predicción del clima de Cuba"),
-    html.P("Este dashboard ofrece información sobre la evolución del clima por más de 30 años. Tiene en cuenta varias variables meteorológicas, desde temperatura, viento, humedad, precipitaciones, rocío, entre otras."),
-    html.P("Puede analizar registros históricos o consultar el pronóstico del clima para las próximas horas."),
-    html.Img(src="/assets/clima.png", style={"width": "85%", "display": "block", "margin": "auto"})
-])
+    return html.Div([
+        html.Div([
+            html.H2("Menú principal"),
+            *links
+        ], className="sidebar"),
+        html.Div(content, className="content")
+    ])
 
-# Callback para manejar navegación entre páginas
 @app.callback(
     Output("page-content", "children"),
-    Input("url", "pathname")
+    Input("url", "pathname"),
+    State("session-role", "data")
 )
-def display_page(pathname):
-    if pathname == "/forecast":
-        return forecast_layout
+def display_page(pathname, role):
+    if role is None:
+        return auth_layout
+    elif pathname == "/forecast":
+        return layout_with_sidebar(forecast_layout, role)
     elif pathname == "/historical_analysis":
-        return historical_analysis_layout
-    return default_layout
+        return layout_with_sidebar(historical_analysis_layout, role)
+    elif pathname == "/cyclones":
+        return layout_with_sidebar(cyclone_layout, role)
+    elif pathname == "/admin_page" and role == "admin":  
+        return layout_with_sidebar(admin_layout, role)
+    else:
+        return layout_with_sidebar(default_main_content(), role)
 
-# Registrar callbacks en la app
 register_forecast_callbacks(app)
 register_historical_callbacks(app)
+register_login_callbacks(app)
+register_register_callbacks(app)
+register_cyclones_callbacks(app)
+register_admin_callbacks(app)
 
 if __name__ == "__main__":
     app.run(debug=True)

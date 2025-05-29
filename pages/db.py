@@ -1,6 +1,12 @@
-from src.storage.db_manager import MongoDBManager
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from src.storage.config import DATABASE_URL
 
-# Conexión única a MongoDB, accesible desde toda la aplicación
-locations_collection = MongoDBManager(db_name="weather_db", collection_name="locations")
-weather_hourly_collection = MongoDBManager(db_name="weather_db", collection_name="weather_hourly")
-weather_daily_collection = MongoDBManager(db_name="weather_db", collection_name="weather_daily")
+print("DATABASE_URL:", DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
+
+def get_db_session():
+    return SessionLocal()

@@ -1,5 +1,6 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from decimal import Decimal
 
 def convert_time_WheatherAPI(s: str) -> str:
     s = s.strip()
@@ -15,3 +16,6 @@ def split_datetime(date):
     date_str = date.strftime('%Y-%m-%d')
     time_str = date.strftime('%H:%M:%S')
     return date_str, time_str
+
+def round_to_two_decimals(value):
+    return float(Decimal(str(value)).quantize(Decimal("0.00"))) 

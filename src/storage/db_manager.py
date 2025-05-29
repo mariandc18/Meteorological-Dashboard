@@ -1,120 +1,95 @@
-import os
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure, PyMongoError
-from bson import ObjectId
-from bson.errors import InvalidId  # Nuevo import
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from typing import Type, Any, Optional, List
+from sqlalchemy import text
 
-class MongoDBManager:
-    def __init__(self, db_name=None, collection_name=None):        
-        self.uri = "mongodb+srv://reinaldo:rcg06a00@cluster0.e0x1rrc.mongodb.net/"
-        self.client = None
-        self.db = None
-        self.collection = None
-        
+class PostgreSQLDBManager:
+    def __init__(self, model: Type[Any]):
+        """
+        model: Clase del modelo SQLAlchemy (por ejemplo, User, Product, etc.)
+        """
+        self.model = model
+
+    def create_record(self, db: Session, data: dict) -> Optional[Any]:
         try:
-            self.client = MongoClient(
-                self.uri,
-                tls=True,
-                tlsAllowInvalidCertificates=True,
-                retryWrites=True,
-                socketTimeoutMS=30000,
-                connectTimeoutMS=30000
-            )
-            self.client.admin.command('ping')
-            print("Conectado a MongoDB Atlas")
-            
-            if db_name:
-                self.db = self.client[db_name]
-                if collection_name:
-                    self.collection = self.db[collection_name]
-                    
-        except ConnectionFailure as e:
-            print(f"Error de conexión: {e}")
-            raise
-
-    def set_collection(self, collection_name):
-        if self.db is not None:  # Corregido
-            self.collection = self.db[collection_name]
-
-    def create_document(self, data):
-        try:
-            # Validar datos básicos
-            if not isinstance(data, dict) or not data:
-                raise ValueError("Datos inválidos")
-
-            # Prevenir inyección de operadores
-            if any(key.startswith('$') for key in data):
-                raise ValueError("Operadores prohibidos")
-
-            result = self.collection.insert_one(data.copy())  # Usar copia para seguridad
-            return str(result.inserted_id)
-
-        except (PyMongoError, ValueError) as e:
-            print(f"Error al crear documento: {e}")
+            instance = self.model(**data)
+            db.add(instance)
+            db.commit()
+            db.refresh(instance)
+            return instance
+        except SQLAlchemyError as e:
+            db.rollback()
+            print(f"Error al crear registro: {e}")
             return None
 
-    def read_document(self, document_id):
+    def read_record(self, db: Session, record_id: Any) -> Optional[Any]:
         try:
-            ObjectId(document_id)  # Validación explícita
-            doc = self.collection.find_one({"_id": ObjectId(document_id)})
-            if doc:
-                doc["_id"] = str(doc["_id"])
-            return doc
-        except (PyMongoError, InvalidId) as e:  # Captura múltiple
-            print(f"Error al leer documento: {e}")
+            return db.query(self.model).get(record_id)
+        except SQLAlchemyError as e:
+            print(f"Error al leer registro: {e}")
             return None
-        
-    def insert_many(self, documents):
-        try:
-            if not isinstance(documents, list) or not all(isinstance(doc, dict) for doc in documents):
-                raise ValueError("Debe ser una lista de diccionarios")
-            for doc in documents:
-                if any(key.startswith('$') for key in doc):
-                    raise ValueError("Operadores prohibidos en alguno de los documentos")
 
-            result = self.collection.insert_many(documents)  # Insertar múltiples documentos
-            return [str(inserted_id) for inserted_id in result.inserted_ids]  # Devolver IDs insertados como cadenas
-        except (PyMongoError, ValueError) as e:
-            print(f"Error al insertar múltiples documentos: {e}")
-            return None
-        
-
-    def update_document(self, document_id, update_data):
+    def update_record(self, db: Session, record_id: Any, update_data: dict) -> bool:
         try:
-            ObjectId(document_id)  # Validación explícita
-            result = self.collection.update_one(
-                {"_id": ObjectId(document_id)},
-                {"$set": update_data}
-            )
-            return result.modified_count > 0
-        except (PyMongoError, InvalidId) as e:  # Captura múltiple
-            print(f"Error al actualizar documento: {e}")
+            instance = db.query(self.model).get(record_id)
+            if not instance:
+                return False
+            for key, value in update_data.items():
+                setattr(instance, key, value)
+            db.commit()
+            return True
+        except SQLAlchemyError as e:
+            db.rollback()
+            print(f"Error al actualizar registro: {e}")
             return False
 
-    def delete_document(self, document_id):
+    def delete_record(self, db: Session, record_id: Any) -> bool:
         try:
-            ObjectId(document_id)  # Validación explícita
-            result = self.collection.delete_one({"_id": ObjectId(document_id)})
-            return result.deleted_count > 0
-        except (PyMongoError, InvalidId) as e:  # Captura múltiple
-            print(f"Error al eliminar documento: {e}")
+            instance = db.query(self.model).get(record_id)
+            if not instance:
+                return False
+            db.delete(instance)
+            db.commit()
+            return True
+        except SQLAlchemyError as e:
+            db.rollback()
+            print(f"Error al eliminar registro: {e}")
             return False
 
-    def list_databases(self):
-        return self.client.list_database_names()
+    def insert_many(self, db: Session, records: List[dict]) -> List[Any]:
+        try:
+            instances = [self.model(**record) for record in records]
+            db.bulk_save_objects(instances)
+            db.commit()
+            return instances
+        except SQLAlchemyError as e:
+            db.rollback()
+            print(f"Error al insertar múltiples registros: {e}")
+            return []
 
-    def list_collections(self):
-        return self.db.list_collection_names()
+    def list_all(self, db: Session) -> List[Any]:
+        try:
+            return db.query(self.model).all()
+        except SQLAlchemyError as e:
+            print(f"Error al listar registros: {e}")
+            return []
 
-    def drop_collection(self):
-        if self.collection is not None:
-            self.db.drop_collection(self.collection.name)
-
-    def close_connection(self):
-        if self.client:
-            self.client.close()
-            self.client = None  # Marcar explícitamente como cerrado
-            self.db = None
-            self.collection = None
-            print("Conexión cerrada")
-        
+    def drop_table(self, db: Session):
+        try:
+            self.model.__table__.drop(db.bind)
+            print(f"Tabla '{self.model.__tablename__}' eliminada.")
+        except SQLAlchemyError as e:
+            print(f"Error al eliminar tabla: {e}")
+    
+    def drop_column(self, db: Session, column_name: str) -> bool:
+        try:
+            table_name = self.model.__tablename__
+            stmt = text(f'ALTER TABLE {table_name} DROP COLUMN IF EXISTS {column_name}')
+            db.execute(stmt)
+            db.commit()
+            print(f"Columna '{column_name}' eliminada de la tabla '{table_name}'.")
+            return True
+        except SQLAlchemyError as e:
+            db.rollback()
+            print(f"Error al eliminar columna '{column_name}': {e}")
+            return False
