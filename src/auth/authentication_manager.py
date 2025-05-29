@@ -33,30 +33,3 @@ class AuthManager:
             self.db.commit()
             return user
         return None
-
-    def register_guest(self, ip_address: str, user_agent: str):
-        guest = User(
-            role='guest',
-            cookie_uid=generate_uid(),
-            ip_address=ip_address,
-            user_agent=user_agent,
-            analysis_count=0,
-            created_at=datetime.utcnow()
-        )
-        self.db.add(guest)
-        self.db.commit()
-        self.db.refresh(guest)
-        return guest
-
-    def upgrade_guest_to_user(self, guest_uid: str, username: str, password: str, email: str = None):
-        guest = self.db.query(User).filter(User.cookie_uid == guest_uid, User.role == 'guest').first()
-        if not guest:
-            return None
-        guest.username = username
-        guest.email = email
-        guest.password = hash_password(password)
-        guest.role = 'user'
-        guest.last_access = datetime.utcnow()
-        self.db.commit()
-        self.db.refresh(guest)
-        return guest
