@@ -15,22 +15,22 @@ def verify_password(password: str, hashed: str) -> bool:
 def hash_user_agent(user_agent: str) -> str:
     return hashlib.sha256(user_agent.encode('utf-8')).hexdigest()
 
-def validar_contraseña(password: str) -> tuple[bool, list[str]]:
-    errores = []
+def validate_password(password: str) -> tuple[bool, list[str]]:
+    errors = []
 
-    especiales = set("!@#$%^&*()_+-=[]{}|;:',.<>/?")
+    special_chars = set("!@#$%^&*()_+-=[]{}|;:',.<>/?")
 
     if len(password) < 8:
-        errores.append("La contraseña debe tener al menos 8 caracteres.")
+        errors.append("La contraseña debe tener al menos 8 caracteres.")
     if not any(c.isupper() for c in password):
-        errores.append("Debe contener al menos una letra mayúscula.")
+        errors.append("Debe contener al menos una letra mayúscula.")
     if not any(c.islower() for c in password):
-        errores.append("Debe contener al menos una letra minúscula.")
+        errors.append("Debe contener al menos una letra minúscula.")
     if not any(c.isdigit() for c in password):
-        errores.append("Debe contener al menos un número.")
-    if not any(c in especiales for c in password):
-        errores.append("Debe contener al menos un carácter especial.")
+        errors.append("Debe contener al menos un número.")
+    if not any(c in special_chars for c in password):
+        errors.append("Debe contener al menos un carácter especial.")
 
-    if errores:
-        return False, errores
+    if errors:
+        return False, errors
     return True, ["Contraseña válida."]
