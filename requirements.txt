@@ -17,3 +17,5 @@ scikit-learn==1.6.1
 urllib3==2.4.0
 uvicorn==0.34.2
 gunicorn
+psycopg2
+psycopg2-binary
