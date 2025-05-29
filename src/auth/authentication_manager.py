@@ -1,4 +1,4 @@
-from auth.security import hash_password, verify_password, generate_uid, hash_user_agent
+from auth.security import hash_password, verify_password, generate_uid, hash_user_agent, validar_contraseña
 from tables import User
 from pages.db import get_db_session
 from sqlalchemy.orm import Session
@@ -11,6 +11,10 @@ class AuthManager:
     def register_user(self, username: str, password: str, email: str = None):
         if self.db.query(User).filter(User.username == username).first():
             raise ValueError("El usuario ya existe")
+        
+        valida, errores = validar_contraseña(password)
+        if not valida:
+            raise ValueError("Error de contraseña: " + " | ".join(errores))
         
         hashed_pw = hash_password(password)
         new_user = User(
