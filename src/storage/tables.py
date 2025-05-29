@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, DateTime, Text, Enum
+from sqlalchemy import Column, Integer, Float, String, DateTime, Text, Enum, ForeignKey
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -88,3 +88,15 @@ class User(Base):
 
     def __repr__(self):
         return f"<User(id={self.id}, role={self.role}, cookie_uid={self.cookie_uid})>"
+    
+class UserInteraction(Base):
+    __tablename__ = 'user_interactions'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=True)  
+    page = Column(Enum('historical', 'forecast', 'cyclones', name='interaction_pages'), nullable=False)
+    component_id = Column(String, nullable=False)  
+    value = Column(Text, nullable=True) 
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", backref="interactions")
