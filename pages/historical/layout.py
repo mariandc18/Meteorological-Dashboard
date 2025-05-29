@@ -42,6 +42,7 @@ historical_analysis_layout = html.Div([
                 className="weather-datepicker"
             ),
         ], className="datepicker-container"),
+        dcc.Store(id="user-session"),
         
         dcc.RadioItems(
             id="agregacion",
