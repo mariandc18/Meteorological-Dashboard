@@ -15,9 +15,5 @@ login_layout = html.Div([
             dcc.Link("Registrarse", href="/register"),
         ]),
         html.Br(),
-        html.Div([
-            html.P("O puedes continuar como invitado:"),
-            dcc.Link("Entrar como invitado", href="/guest"),
-        ])
     ], style={"maxWidth": "400px", "margin": "auto", "textAlign": "center", "padding": "50px"})
 ])

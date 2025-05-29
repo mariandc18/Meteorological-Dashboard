@@ -15,7 +15,5 @@ auth_layout = html.Div([
         dcc.Input(id="register-password-confirm", type="password", placeholder="Confirmar contraseña", debounce=True),
         html.Button("Registrarse", id="register-button"),
         html.Div(id="register-message", style={"color": "green", "marginTop": "10px"}),
-        html.Hr(),
-        html.A("Continuar como invitado", href="/forecast", style={"display": "block", "marginTop": "15px"})
-    ], style={"maxWidth": "400px", "margin": "auto"})
+        html.Hr()], style={"maxWidth": "400px", "margin": "auto"})
 ])

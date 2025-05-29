@@ -10,8 +10,8 @@ auth_manager = AuthManager()
 def register_login_callbacks(app):
     @app.callback(
         Output("login-message", "children"),
-        Output("session-authenticated", "data"),  
-        Output("url", "pathname"),               
+        Output("session-role", "data"),  
+        Output("url", "pathname"),                
         Input("login-button", "n_clicks"),
         State("login-username", "value"),
         State("login-password", "value"),
@@ -19,12 +19,14 @@ def register_login_callbacks(app):
     )
     def handle_login(n_clicks, username, password):
         if not username or not password:
-            return "Por favor, complete todos los campos.", False, dash.no_update
-
+            return "Por favor, complete todos los campos.", None, "/login"
+       
         user = auth_manager.login_user(username, password)
         if user:
             response = make_response("OK")
             set_uid_cookie(response, str(user.cookie_uid))
-            return "", True, "/home"
+
+            path = "/admin_page" if user.role == "admin" else "/home"
+            return "", user.role, path
         else:
-            return "Credenciales inválidas.", False, dash.no_update
+            return "Credenciales inválidas.", None, "/login"
