@@ -1,6 +1,6 @@
 # Weather Dashboard ⛅
 
-Este repositorio contiene un pipeline completo de ingeniería de datos, desde la ingesta hasta la visualización, con el objetivo de analizar los datos meteorológicos de Cuba tanto en tiempo real como históricamente. Realiza pronósticos de clima para las próximas 24 horas y brinda información detallada de los eventos meteorológicos más relevantes que han afectado a la isla desde el anno 2000 hasta la actualidad(ciclones, huracanes, tormentas tropicales, etc).
+Este repositorio contiene un pipeline completo de ingeniería de datos, desde la ingesta hasta la visualización, con el objetivo de analizar los datos meteorológicos de Cuba tanto en tiempo real como históricamente. Realiza pronósticos de clima para las próximas 24 horas y brinda información detallada de los eventos meteorológicos más relevantes que han afectado a la isla desde el año 2000 hasta la actualidad(ciclones, huracanes, tormentas tropicales, etc).
 
 ![Weather Dashboard](assets/app.png)
 
@@ -44,3 +44,5 @@ Puede acceder a la aplicación mediante el siguiente enlace: <https://meteorolog
 * [FastAPI](https://fastapi.tiangolo.com/) - Para RestAPI
 * [Render](https://render.com/) - Para despliegue de la app y el modelo de predicción.
 * [Dash Plotly](https://dash.plotly.com/) - Para crear la interfaz de usuario
+* [TimescaleDB](https://docs.timescale.com/) - Para optimización de almacenamiento en PostgreSQL
+* [Azure](https://learn.microsoft.com/en-us/azure/?product=popular) - Para montar una VM
