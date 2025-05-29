@@ -3,7 +3,7 @@ import hashlib
 import bcrypt
 import re
 
-def generate_uid() -> str:
+def generate_uid():
     return str(uuid.uuid4())
 
 def hash_password(password: str) -> str:
