@@ -1,5 +1,5 @@
 from dash import Input, Output, State
-from auth.authentication_manager import AuthManager
+from src.auth.authentication_manager import AuthManager
 
 auth_manager = AuthManager()
 

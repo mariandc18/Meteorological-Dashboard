@@ -1,4 +1,4 @@
-from tables import UserInteraction
+from src.storage.tables import UserInteraction
 from pages.db import get_db_session  
 from datetime import datetime
 import uuid

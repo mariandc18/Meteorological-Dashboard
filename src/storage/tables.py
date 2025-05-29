@@ -50,7 +50,7 @@ class WeatherDaily(Base):
     snowfall_sum = Column(Float, nullable=False)
     wind_speed_10m_max = Column(Float, nullable=False)
     
-class Cyclones(Base):
+class CycloneTrajectory(Base):
     __tablename__ = 'cyclones'
     id = Column(Integer, primary_key=True, autoincrement=True)
     sid = Column(String(20), nullable=False)
@@ -79,7 +79,7 @@ class User(Base):
     cookie_uid = Column(UUID(as_uuid=True), unique=True, nullable=False)  
     email = Column(Text, nullable=True)
     username = Column(Text, nullable=True)
-    password_hash = Column(Text, nullable=True)
+    password = Column(Text, nullable=True)
     role = Column(Enum('guest', 'user', 'admin', name='user_roles'), nullable=False, default='guest')
     analysis_count = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

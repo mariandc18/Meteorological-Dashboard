@@ -1,4 +1,4 @@
-from security import hash_password, verify_password, generate_uid, validate_password
+from src.auth.security import hash_password, verify_password, generate_uid, validate_password
 from src.storage.tables import User, Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -39,7 +39,7 @@ class AuthManager:
 
     def login_user(self, username: str, password: str):
         user = self.db.query(User).filter(User.username == username).first()
-        if user and user.password_hash and verify_password(password, user.password_hash):
+        if user and user.password and verify_password(password, user.password):
             user.last_access = datetime.utcnow()
             self.db.commit()
             return user

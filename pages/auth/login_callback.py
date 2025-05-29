@@ -1,7 +1,7 @@
 from dash import Input, Output, State, dcc
 from flask import make_response
-from auth.authentication_manager import AuthManager
-from auth.session import set_uid_cookie
+from src.auth.authentication_manager import AuthManager
+from src.auth.session import set_uid_cookie
 from dash.exceptions import PreventUpdate
 import dash
 

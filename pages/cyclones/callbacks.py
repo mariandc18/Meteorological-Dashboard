@@ -2,7 +2,7 @@ from dash import Input, Output, html, dcc
 import plotly.express as px
 import pandas as pd
 from sqlalchemy.orm import Session
-from tables import CycloneTrajectory, UserInteraction
+from src.storage.tables import CycloneTrajectory, UserInteraction
 from pages.db import get_db_session  
 import plotly.graph_objects as go
 from datetime import datetime

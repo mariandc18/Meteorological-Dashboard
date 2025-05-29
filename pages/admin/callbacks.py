@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from pages.db import get_db_session
 from datetime import datetime, timedelta
-from tables import UserInteraction, Ubicacion
+from src.storage.tables import UserInteraction, Ubicacion
 import dash
 
 def register_callbacks(app):

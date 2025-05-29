@@ -4,7 +4,7 @@ import plotly.express as px
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
 from pages.db import engine
-from tables import UserInteraction
+from src.storage.tables import UserInteraction
 from datetime import datetime
 import uuid
 from pages.tracking import log_interaction
