@@ -25,3 +25,4 @@ dash-bootstrap-components==2.0.3
 Flask==3.0.3
 matplotlib-inline==0.1.7
 uuid==1.30
+dotenv
