@@ -5,9 +5,10 @@ numpy==2.2.5
 openmeteo_requests==1.4.0
 openmeteo_sdk==1.20.0
 pandas==2.2.3
-plotly==6.0.1
+plotly==6.1.1
 pydantic==2.11.4
 pydantic_core==2.33.2
+SQLAlchemy==2.0.41
 pymongo==4.12.1
 pytz==2025.2
 requests==2.32.3
@@ -19,3 +20,8 @@ uvicorn==0.34.2
 gunicorn
 psycopg2
 psycopg2-binary
+bcrypt==4.3.0
+dash-bootstrap-components==2.0.3
+Flask==3.0.3
+matplotlib-inline==0.1.7
+uuid==1.30
