@@ -2,7 +2,8 @@ from sqlalchemy import Column, Integer, Float, String, DateTime, Text, Enum, For
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
-import datetime
+from datetime import datetime
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 

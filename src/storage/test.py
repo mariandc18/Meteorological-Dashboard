@@ -1,125 +1,98 @@
 import pytest
-from bson import ObjectId
-from bson.errors import InvalidId
-from db_manager import MongoDBManager
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from testmodel import Base, TestModel
+from db_manager import PostgreSQLDBManager 
+
+
+TEST_DATABASE_URL = "sqlite:///:memory:"  
+engine = create_engine(TEST_DATABASE_URL)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @pytest.fixture(scope="function")
-def db():
-    test_db = "test_db"
-    test_collection = "test_collection"
-    
-    db_manager = MongoDBManager(test_db, test_collection)
-    db_manager.collection.delete_many({})  # Limpieza inicial
-    
-    yield db_manager
-    
-    # Limpieza después de cada test (antes de cerrar la conexión)
-    if db_manager.client:
-        try:
-            db_manager.collection.delete_many({})
-        except:
-            pass
-        db_manager.close_connection()
+def db_session():
+    Base.metadata.create_all(bind=engine)  # Crear tablas antes de cada test
+    session = TestingSessionLocal()
+    yield session
+    session.close()
+    Base.metadata.drop_all(bind=engine)  # Limpiar tablas después de cada test
 
-def test_connection(db):
-    assert db.client is not None
-    assert db.db.name == "test_db"
-    assert db.collection.name == "test_collection"
+@pytest.fixture(scope="function")
+def db_manager():
+    return PostgreSQLDBManager(TestModel)
 
-def test_create_document(db):
-    # Test creación válida
-    valid_data = {"name": "Test", "value": 123}
-    doc_id = db.create_document(valid_data)
-    assert ObjectId.is_valid(doc_id)
-    
-    # Test creación inválida (intento de inyección de operador)
-    invalid_data = {"$set": {"name": "Hack"}}
-    invalid_id = db.create_document(invalid_data)
-    assert invalid_id is None  # Debería fallar y retornar None
+def test_create_record(db_session, db_manager):
+    data = {"name": "Test", "value": 123}
+    record = db_manager.create_record(db_session, data)
+    assert record is not None
+    assert record.id is not None
+    assert record.name == "Test"
+    assert record.value == 123
 
-def test_read_document(db):
-    # Crear documento de prueba
-    doc_id = db.create_document({"name": "Read Test"})
-    
-    # Caso exitoso
-    doc = db.read_document(doc_id)
-    assert doc["name"] == "Read Test"
-    
-    # Caso con ID inválido
-    assert db.read_document("invalid_id") is None
-    
-    # Caso con ID inexistente
-    fake_id = str(ObjectId())
-    assert db.read_document(fake_id) is None
+def test_read_record(db_session, db_manager):
+    data = {"name": "ReadTest", "value": 10}
+    record = db_manager.create_record(db_session, data)
+    read = db_manager.read_record(db_session, record.id)
+    assert read is not None
+    assert read.name == "ReadTest"
 
-def test_update_document(db):
-    # Crear documento de prueba
-    doc_id = db.create_document({"name": "Original"})
-    
-    # Caso exitoso
-    update_result = db.update_document(doc_id, {"name": "Updated"})
-    assert update_result is True
-    
-    # Verificar actualización
-    updated_doc = db.read_document(doc_id)
-    assert updated_doc["name"] == "Updated"
-    
-    # Caso con ID inválido
-    assert db.update_document("invalid_id", {"name": "Fail"}) is False
+    # Leer registro que no existe
+    assert db_manager.read_record(db_session, 9999) is None
 
-def test_delete_document(db):
-    # Crear documento de prueba
-    doc_id = db.create_document({"name": "To Delete"})
-    
-    # Caso exitoso
-    delete_result = db.delete_document(doc_id)
-    assert delete_result is True
-    
-    # Verificar eliminación
-    assert db.read_document(doc_id) is None
-    
-    # Caso con ID inválido
-    assert db.delete_document("invalid_id") is False
+def test_update_record(db_session, db_manager):
+    data = {"name": "Original", "value": 1}
+    record = db_manager.create_record(db_session, data)
+    updated = db_manager.update_record(db_session, record.id, {"name": "Updated"})
+    assert updated is True
 
-def test_list_databases(db):
-    databases = db.list_databases()
-    assert isinstance(databases, list)
-    assert "test_db" in databases
+    updated_record = db_manager.read_record(db_session, record.id)
+    assert updated_record.name == "Updated"
 
-def test_list_collections(db):
-    collections = db.list_collections()
-    assert isinstance(collections, list)
-    assert "test_collection" in collections
+    # Actualizar registro no existente
+    assert db_manager.update_record(db_session, 9999, {"name": "Fail"}) is False
 
-def test_set_collection(db):
-    new_collection = "new_test_collection"
-    db.set_collection(new_collection)
-    assert db.collection.name == new_collection
-    
-    # Restaurar colección original
-    db.set_collection("test_collection")
+def test_delete_record(db_session, db_manager):
+    data = {"name": "ToDelete", "value": 5}
+    record = db_manager.create_record(db_session, data)
+    deleted = db_manager.delete_record(db_session, record.id)
+    assert deleted is True
 
-def test_drop_collection(db):
-    temp_collection = "temp_collection"
-    db.set_collection(temp_collection)
-    
-    # Insertar documento y eliminar colección
-    db.create_document({"test": "data"})
-    db.drop_collection()
-    
-    # Verificar eliminación
-    assert temp_collection not in db.list_collections()
-    
-    # Restaurar configuración original
-    db.set_collection("test_collection")
+    assert db_manager.read_record(db_session, record.id) is None
 
-def test_close_connection(db):
-    # Cerrar conexión
-    db.close_connection()
+    # Eliminar registro no existente
+    assert db_manager.delete_record(db_session, 9999) is False
+
+def test_insert_many(db_session, db_manager):
+    records = [
+        {"name": "Bulk1", "value": 1},
+        {"name": "Bulk2", "value": 2},
+    ]
+    inserted = db_manager.insert_many(db_session, records)
+    assert len(inserted) == 2
+    names = [r.name for r in inserted]
+    assert "Bulk1" in names and "Bulk2" in names
+
+def test_list_all(db_session, db_manager):
+    db_manager.create_record(db_session, {"name": "List1", "value": 100})
+    db_manager.create_record(db_session, {"name": "List2", "value": 200})
+    all_records = db_manager.list_all(db_session)
+    assert len(all_records) >= 2
+
+def test_drop_column(db_session, db_manager):
+    # Insertar un registro para asegurar la tabla está activa
+    db_manager.create_record(db_session, {"name": "TestDrop", "value": 1})
     
-    # Verificar que el cliente está marcado como cerrado
-    assert db.client is None
-    
-    # Verificar que nuevas operaciones fallan
-    with pytest.raises(AttributeError):
-        db.create_document({"test": "data"})
+    # Drop columna "value"
+    success = db_manager.drop_column(db_session, "value")
+    assert success is True
+
+    # Intentar dropear una columna que no existe
+    success = db_manager.drop_column(db_session, "nonexistent_column")
+    assert success is True  # El DROP COLUMN IF EXISTS no falla si no existe
+
+def test_drop_table(db_session, db_manager):
+    # Drop tabla entera
+    db_manager.drop_table(db_session)
+
+    # Verificar que la tabla no existe consultando metadata
+    assert not engine.dialect.has_table(engine.connect(), db_manager.model.__tablename__)
