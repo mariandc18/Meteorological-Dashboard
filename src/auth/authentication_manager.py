@@ -27,7 +27,7 @@ class AuthManager:
         new_user = User(
             username=username,
             email=email,
-            password_hash=hashed_pw,
+            password=hashed_pw,
             role='user',
             cookie_uid=generate_uid(),  # debe devolver string UUID
             created_at=datetime.utcnow()

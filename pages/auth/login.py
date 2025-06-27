@@ -6,7 +6,7 @@ login_layout = html.Div([
         dcc.Input(id="login-username", placeholder="Usuario", type="text"),
         dcc.Input(id="login-password", placeholder="Contraseña", type="password"),
         html.Button("Iniciar sesión", id="login-button"),
-        html.Div(id="login-message", style={"color": "red", "marginTop": "10px"}),
+        html.Div(id="login-message"),
 
         html.Hr(),
 
@@ -15,5 +15,5 @@ login_layout = html.Div([
             dcc.Link("Registrarse", href="/register"),
         ]),
         html.Br(),
-    ], style={"maxWidth": "400px", "margin": "auto", "textAlign": "center", "padding": "50px"})
+    ])
 ])
