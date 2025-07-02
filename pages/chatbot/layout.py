@@ -1,6 +1,7 @@
 from dash import html, dcc
 
 chatbot_layout = html.Div([
+    dcc.Store(id="user-session", storage_type="session"), 
     html.H2("Quieres saber cómo está el clima hoy en alguna parte del mundo?", className="forecast-title"),
 
     html.Div([
