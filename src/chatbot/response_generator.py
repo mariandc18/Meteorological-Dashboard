@@ -40,9 +40,12 @@ def call_llm(prompt, model= "mistral"):
         print("Error:", e)
         return "Hubo un error al conectarse con el modelo"
 
-def generate_forecast_response(location: Location, aggregator: ForecastAggregator, user_prompt: str) -> str:
-    rango = (date.today(), date.today() + timedelta(days=7))
-    aggregated = aggregator.aggregate_daily_forecasts(location, rango)
+def generate_forecast_response(location, aggregator, user_prompt, precomputed=None):
+    if precomputed:
+        aggregated = precomputed
+    else:
+        range = (date.today(), date.today() + timedelta(days=7))
+        aggregated = aggregator.aggregate_daily_forecasts(location, range)
 
     llm_input = generate_llm_input(location.name, aggregated)
     llm_input["user_prompt"] = user_prompt  
