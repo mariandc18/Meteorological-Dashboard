@@ -95,7 +95,7 @@ class UserInteraction(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=True)  
-    page = Column(Enum('historical', 'forecast', 'cyclones', name='interaction_pages'), nullable=False)
+    page = Column(Enum('historical', 'forecast', 'cyclones', 'chatbot', name='interaction_pages'), nullable=False)
     component_id = Column(String, nullable=False)  
     value = Column(Text, nullable=True) 
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
