@@ -7,15 +7,17 @@ from src.chatbot.response_generator import generate_forecast_response
 from src.chatbot.prompt_analyzer import analyze_user_prompt
 from src.chatbot.cache.cache_manager import get_forecast, save_forecast
 from datetime import date, timedelta
+from pages.tracking import log_interaction
 
 def register_callbacks(app):
     
     @app.callback(
         Output("chatbot-response-output", "children"),
         Input("send-button", "n_clicks"),
-        State("chat-input", "value")
+        State("chat-input", "value"),
+        State("user-session", "data")
     )
-    def handle_user_question(n_clicks, user_prompt):
+    def handle_user_question(n_clicks, user_prompt, user_data):
         if not user_prompt:
             return "Escribe algo para poder ayudarte."
 
@@ -27,6 +29,9 @@ def register_callbacks(app):
 
         location_name = analysis["location"]
         location = Location(name=location_name, lat=None, lon=None)
+        
+        user_id = user_data.get("user_id") if user_data else None
+        log_interaction(user_id, "chatbot", "chatbot-response-output", f"Consultó clima para {location_name}")
 
         cached = get_forecast(location_name)
         if cached:
@@ -42,8 +47,8 @@ def register_callbacks(app):
                 OpenMeteoProvider()
             ]
             aggregator = ForecastAggregator(providers=providers)
-            rango = (date.today(), date.today() + timedelta(days=7))
-            aggregated = aggregator.aggregate_daily_forecasts(location, rango)
+            range = (date.today(), date.today() + timedelta(days=7))
+            aggregated = aggregator.aggregate_daily_forecasts(location, range)
 
             merged_data = [day.merged for day in aggregated]
             save_forecast(location_name, merged_data)
