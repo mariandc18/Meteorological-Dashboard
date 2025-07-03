@@ -7,7 +7,7 @@ from pages.db import get_db_session
 import plotly.graph_objects as go
 from datetime import datetime
 import uuid
-from pages.tracking import log_interaction
+from pages.tracking import log_interaction_by_username
 
 def register_callbacks(app):
     @app.callback(
@@ -24,8 +24,8 @@ def register_callbacks(app):
             .all()
         )
 
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "cyclones", "season-slider", f"Rango {start_year}-{end_year}")
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "cyclones", "season-slider", f"Rango {start_year}-{end_year}")
 
         return [{'label': name[0], 'value': name[0]} for name in names]
 
@@ -53,9 +53,9 @@ def register_callbacks(app):
             session.bind
         )
 
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "cyclones", "cyclone-dropdown", name)
-
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "cyclones", "cyclone-dropdown", name)
+        
         fig = px.line_mapbox(df, lat='lat', lon='lon', hover_data=['iso_time', 'usa_status'],
                             color_discrete_sequence=['blue'], zoom=4, height=400)
         fig.update_layout(mapbox_style='open-street-map')
@@ -86,8 +86,8 @@ def register_callbacks(app):
 
         df = pd.read_sql(query.statement, session.bind)
         
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "cyclones", "cyclone-details", name)
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "cyclones", "cyclone-details", name)
 
         fig_sshs = px.line(df, x='iso_time', y='usa_sshs',
                         title='Categoría SSHS',
@@ -119,9 +119,9 @@ def register_callbacks(app):
             session.bind
         )
         df['step'] = df.groupby('name').cumcount()
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "cyclones", "all-cyclones-paths", f"Comparación temporada {start_year}-{end_year}")
-
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "cyclones", "all-cyclones-paths", f"Comparación temporada {start_year}-{end_year}")
+        
         fig_paths = px.line_mapbox(df, lat='lat', lon='lon', color='name', hover_data=['step'],
                                    zoom=3, height=400)
         fig_paths.update_layout(mapbox_style='open-street-map')
