@@ -3,13 +3,11 @@ import pandas as pd
 import plotly.express as px
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
-from pages.db import engine
 from src.storage.tables import UserInteraction
 from datetime import datetime
 import uuid
-from pages.tracking import log_interaction
-
-Session = sessionmaker(bind=engine)
+from pages.tracking import log_interaction_by_username
+from pages.db import get_db_session
 
 def register_callbacks(app):
     @app.callback(
@@ -21,12 +19,12 @@ def register_callbacks(app):
         if pathname != "/historical_analysis":
             return []
 
-        session = Session()
+        session = get_db_session()
         provs = session.execute(text("SELECT DISTINCT province FROM locations")).fetchall()
         session.close()
 
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "historical", "provincia_dropdown", "ver opciones")
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "historical", "provincia_dropdown", "ver opciones")
 
         return [{"label": p[0], "value": p[0]} for p in sorted(provs)]
 
@@ -39,16 +37,15 @@ def register_callbacks(app):
         if not selected:
             return []
 
-        session = Session()
+        session = get_db_session()
         mun = session.execute(
             text("SELECT DISTINCT municipality FROM locations WHERE province = :province"),
             {"province": selected}
         ).fetchall()
         session.close()
 
-        # Registrar interacción
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "historical", "municipio_dropdown", selected)
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "historical", "municipio_dropdown", selected)
 
         return [{"label": m[0], "value": m[0]} for m in sorted(mun)]
 
@@ -60,7 +57,7 @@ def register_callbacks(app):
     def update_variable_options(data_type, user_data):
         WeatherTable = "weather_hourly" if data_type == "hourly" else "weather_daily"
 
-        session = Session()
+        session = get_db_session()
         columns = session.execute(
             text("SELECT column_name FROM information_schema.columns WHERE table_name = :table"),
             {"table": WeatherTable}
@@ -69,8 +66,8 @@ def register_callbacks(app):
 
         exclude_columns = {"ubicacion_id", "date", "time"}
 
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "historical", "variable_dropdown", data_type)
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "historical", "variable_dropdown", data_type)
 
         return [{"label": col[0], "value": col[0]} for col in columns if col[0] not in exclude_columns]
 
@@ -96,7 +93,7 @@ def register_callbacks(app):
         if not var:
             var = "temperature" if data_type == "hourly" else "temperature_mean"
 
-        session = Session()
+        session = get_db_session()
         ids = session.execute(
             text("SELECT id FROM locations WHERE province = :province AND municipality = :municipality"),
             {"province": prov, "municipality": mun}
@@ -108,7 +105,7 @@ def register_callbacks(app):
         if not ids:
             return px.scatter(title="No hay ubicaciones para ese filtro")
 
-        session = Session()
+        session = get_db_session()
         query = text(f"SELECT date, {var} FROM {WeatherTable} WHERE ubicacion_id::TEXT IN :ids AND date >= :start AND date <= :end")
         params = {"ids": ids, "start": start, "end": end}
 
@@ -123,8 +120,8 @@ def register_callbacks(app):
         df["period"] = df["date"].dt.to_period(agg[0].upper()).astype(str)
         grp = df.groupby("period")[var].mean().reset_index()
 
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "historical", "weather_graph", f"Datos desde {start} hasta {end}")
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "historical", "weather_graph", f"Datos desde {start} hasta {end}")
 
         fig = px.line(grp, x="period", y=var, title=f"{var.replace('_', ' ').title()} promedio por {agg.title()}")
         fig.update_layout(xaxis_title="Periodo", yaxis_title=var)
