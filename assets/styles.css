@@ -452,3 +452,33 @@ body {
     background: var(--sky-blue);
     color: white;
 }
+
+.chatbot-input {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1rem;
+    border: 2px solid var(--sky-blue);
+    border-radius: 8px;
+    resize: vertical;
+    background: white;
+    color: var(--storm-blue);
+    margin-bottom: 1rem;
+    transition: box-shadow 0.3s ease;
+}
+
+.chatbot-input:focus {
+    box-shadow: 0 0 5px var(--deep-ocean);
+    outline: none;
+}
+
+.chatbot-controls {
+    margin-bottom: 1rem;
+}
+
+.chatbot-output {
+    background: rgba(255, 255, 255, 0.98);
+    border-left: 5px solid var(--sky-blue);
+    white-space: pre-wrap;
+    font-size: 1rem;
+    color: var(--storm-blue);
+}
