@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
 from datetime import datetime, timedelta
 from pages.db import engine
-from pages.tracking import log_interaction
+from pages.tracking import log_interaction_by_username
 
 API_FORECAST_URL = "http://127.0.0.1:8000/predict"
 
@@ -24,8 +24,8 @@ def register_callbacks(app):
         provs = session.execute(text("SELECT DISTINCT province FROM locations")).fetchall()
         session.close()
         
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "forecast", "forecast-provincia", "ver opciones")
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "forecast", "forecast-provincia", "ver opciones")
 
         return [{"label": p[0], "value": p[0]} for p in sorted(provs)]
 
@@ -44,8 +44,8 @@ def register_callbacks(app):
         ).fetchall()
         session.close()
 
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "forecast", "forecast-municipio", selected_provincia)
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "forecast", "forecast-municipio", selected_provincia)
 
         return [{"label": m[0], "value": m[0]} for m in sorted(mun)]
 
@@ -104,7 +104,7 @@ def register_callbacks(app):
             ) for i, f in enumerate(forecast_features)
         ]
 
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "forecast", "forecast-graphs", f"Generó gráficos para {provincia}, {municipio}")
+        username = user_data if isinstance(user_data, str) else None
+        log_interaction_by_username(username, "forecast", "forecast-graphs", f"Generó gráficos para {provincia}, {municipio}")
 
         return graphs

@@ -2,7 +2,6 @@ from dash import dcc, html
 
 forecast_layout = html.Div([
     html.H3("Pronóstico del Tiempo", className="forecast-title"),
-    dcc.Store(id="user-session"),
     
     html.Div([
         html.Div([
