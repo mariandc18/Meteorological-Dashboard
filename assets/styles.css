@@ -482,3 +482,23 @@ body {
     font-size: 1rem;
     color: var(--storm-blue);
 }
+
+.feedback-msg {
+    color: var(--storm-blue);
+    margin-top: 1.5rem;
+    font-size: 1rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.card .dash-table-container {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.card .dash-table-container .dash-spreadsheet-container {
+    border-radius: 8px;
+    overflow: hidden;
+}
