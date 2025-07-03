@@ -1,7 +1,6 @@
 from dash import html, dcc
 
 auth_layout = html.Div([
-    dcc.Store(id="user-session"),
 
     html.Div([
         html.H4("Iniciar Sesión"),
