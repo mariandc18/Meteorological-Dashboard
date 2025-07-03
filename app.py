@@ -1,5 +1,5 @@
 import dash
-from dash import dcc, html, Input, Output, State
+from dash import dcc, html, Input, Output, State, ALL
 import psycopg2
 from pages.forecast.layout import forecast_layout
 from pages.historical.layout import historical_analysis_layout
@@ -12,7 +12,11 @@ from pages.cyclones.callbacks import register_callbacks as register_cyclones_cal
 from pages.cyclones.layout import cyclone_layout
 from pages.admin.callbacks import register_callbacks as register_admin_callbacks
 from pages.admin.layout import admin_layout
+from pages.chatbot.layout import chatbot_layout
+from pages.chatbot.callbacks import register_callbacks as register_chatbot_callbacks
 from src.storage.config import DATABASE_URL
+from pages.historial.layout import layout as historial_layout
+from pages.historial.callback import register_callbacks as register_historial_callbacks
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
@@ -24,6 +28,8 @@ server = app.server
 app.layout = html.Div([
     dcc.Location(id="url", refresh=False),
     dcc.Store(id="session-role", data=None),
+    dcc.Store(id="user-session", storage_type="session"),
+    html.Div(id="debug-user-session"),
     html.Div(id="page-content")
 ])
 
@@ -41,6 +47,10 @@ def layout_with_sidebar(content, role):
         dcc.Link("Pronóstico del tiempo ⛅", href="/forecast"),
         html.Br(),
         dcc.Link("Eventos meteorológicos 🌪️", href="/cyclones"),
+        html.Br(),
+        dcc.Link("Cómo está el clima en...?🌍", href="/chatbot"),
+        html.Br(),
+        dcc.Link("Historial de interacciones ⌛", href= "/historial")
     ]
 
     if role == "admin":
@@ -56,6 +66,14 @@ def layout_with_sidebar(content, role):
         ], className="sidebar"),
         html.Div(content, className="content")
     ])
+    
+@app.callback(
+    Output("debug-user-session", "children"),
+    Input("user-session", "data")
+)
+def show_user_session(data):
+    return f"🔎 Usuario en sesión: {data}"
+
 
 @app.callback(
     Output("page-content", "children"),
@@ -73,6 +91,10 @@ def display_page(pathname, role):
         return layout_with_sidebar(cyclone_layout, role)
     elif pathname == "/admin_page" and role == "admin":  
         return layout_with_sidebar(admin_layout, role)
+    elif pathname == "/chatbot":
+        return layout_with_sidebar(chatbot_layout, role)
+    elif pathname == "/historial":
+        return layout_with_sidebar(historial_layout, role)
     else:
         return layout_with_sidebar(default_main_content(), role)
 
@@ -82,6 +104,8 @@ register_login_callbacks(app)
 register_register_callbacks(app)
 register_cyclones_callbacks(app)
 register_admin_callbacks(app)
+register_chatbot_callbacks(app)
+register_historial_callbacks(app)
 
 if __name__ == "__main__":
     app.run(debug=True)
