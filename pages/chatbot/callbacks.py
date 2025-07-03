@@ -7,17 +7,17 @@ from src.chatbot.response_generator import generate_forecast_response
 from src.chatbot.prompt_analyzer import analyze_user_prompt
 from src.chatbot.cache.cache_manager import get_forecast, save_forecast
 from datetime import date, timedelta
-from pages.tracking import log_interaction
+from pages.tracking import log_interaction_by_username
 
 def register_callbacks(app):
-    
+
     @app.callback(
         Output("chatbot-response-output", "children"),
         Input("send-button", "n_clicks"),
         State("chat-input", "value"),
-        State("user-session", "data")
+        State("user-session", "data") 
     )
-    def handle_user_question(n_clicks, user_prompt, user_data):
+    def handle_user_question(n_clicks, user_prompt, username):
         if not user_prompt:
             return "Escribe algo para poder ayudarte."
 
@@ -29,9 +29,9 @@ def register_callbacks(app):
 
         location_name = analysis["location"]
         location = Location(name=location_name, lat=None, lon=None)
-        
-        user_id = user_data.get("user_id") if user_data else None
-        log_interaction(user_id, "chatbot", "chatbot-response-output", f"Consultó clima para {location_name}")
+
+        if username:
+            log_interaction_by_username(username, "chatbot", "chatbot-response-output", location_name)
 
         cached = get_forecast(location_name)
         if cached:
@@ -52,5 +52,5 @@ def register_callbacks(app):
 
             merged_data = [day.merged for day in aggregated]
             save_forecast(location_name, merged_data)
-              
+
         return generate_forecast_response(location, None, user_prompt=user_prompt, precomputed=aggregated)
