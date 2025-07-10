@@ -56,5 +56,12 @@ historical_analysis_layout = html.Div([
         ),
     ], className="controls-container"),
     
+    html.Div([
+        html.Label("Nombre para guardar esta vista:"),
+        dcc.Input(id="nombre-vista-historical", placeholder="Ej: Santiago - Precipitación", type="text"),
+        html.Button("Guardar vista", id="guardar-vista-btn-historical", n_clicks=0),
+        html.Div(id="feedback-guardar-vista-historical")
+    ], style={"margin": "20px 0"}),
+
     dcc.Graph(id="weather-graph", className="weather-graph")
 ], className="main-container")
