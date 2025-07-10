@@ -1,13 +1,17 @@
-from dash import Input, Output
+from dash import Input, Output, State
 import pandas as pd
 import plotly.express as px
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
-from src.storage.tables import UserInteraction
+from src.storage.tables import UserInteraction, SavedView
 from datetime import datetime
 import uuid
-from pages.tracking import log_interaction_by_username
+from pages.tracking import log_interaction_by_username, save_view_by_username
 from pages.db import get_db_session
+from dash import ctx
+from urllib.parse import parse_qs
+from dash.exceptions import PreventUpdate
+from urllib.parse import urlencode
 
 def register_callbacks(app):
     @app.callback(
@@ -16,7 +20,7 @@ def register_callbacks(app):
         Input("user-session", "data") 
     )
     def update_provincia_options(pathname, user_data):
-        if pathname != "/historical_analysis":
+        if pathname not in ["/historical_analysis", "/historical"]:
             return []
 
         session = get_db_session()
@@ -126,3 +130,89 @@ def register_callbacks(app):
         fig = px.line(grp, x="period", y=var, title=f"{var.replace('_', ' ').title()} promedio por {agg.title()}")
         fig.update_layout(xaxis_title="Periodo", yaxis_title=var)
         return fig
+    
+    @app.callback(
+    Output("feedback-guardar-vista-historical", "children"),
+    Input("guardar-vista-btn-historical", "n_clicks"),
+    State("data-type", "value"),
+    State("provincia", "value"),
+    State("municipio", "value"),
+    State("variable", "value"),
+    State("date-picker-range", "start_date"),
+    State("date-picker-range", "end_date"),
+    State("agregacion", "value"),
+    State("nombre-vista-historical", "value"),
+    State("user-session", "data"),
+    prevent_initial_call=True
+)
+    def guardar_vista_historical(n_clicks, data_type, prov, mun, var, start, end, agregacion, nombre_vista, username):
+        if not nombre_vista:
+            return "Introduce un nombre para la vista."
+
+        estado = {
+            "data-type": data_type,
+            "provincia": prov,
+            "municipio": mun,
+            "variable": var,
+            "start_date": start,
+            "end_date": end,
+            "agregacion": agregacion
+        }
+
+        success, mensaje = save_view_by_username(username, "historical_analysis", nombre_vista, estado)
+        return mensaje
+
+    @app.callback(
+        Output("url", "search", allow_duplicate=True),
+        Input("data-type", "value"),
+        Input("provincia", "value"),
+        Input("municipio", "value"),
+        Input("variable", "value"),
+        Input("date-picker-range", "start_date"),
+        Input("date-picker-range", "end_date"),
+        Input("agregacion", "value"),
+        prevent_initial_call=True
+    )
+    def update_url_query(data_type, prov, mun, var, start, end, agg):
+        params = {
+            "data-type": data_type,
+            "provincia": prov,
+            "municipio": mun,
+            "variable": var,
+            "start_date": start,
+            "end_date": end,
+            "agregacion": agg
+        }
+
+        # Elimina claves con valores None
+        params = {k: v for k, v in params.items() if v is not None}
+
+        return "?" + urlencode(params)
+    
+    @app.callback(
+        Output("data-type", "value"),
+        Output("provincia", "value"),
+        Output("municipio", "value"),
+        Output("variable", "value"),
+        Output("date-picker-range", "start_date"),
+        Output("date-picker-range", "end_date"),
+        Output("agregacion", "value"),
+        Input("url", "search"),
+        Input("url", "pathname"),
+    )
+    def apply_saved_view_historical(query_string, pathname):
+        if pathname not in ["/historical_analysis", "/historical"] or not query_string:
+            raise PreventUpdate
+
+        parsed = parse_qs(query_string.lstrip("?"))
+        clean = lambda k: parsed.get(k, [None])[0]
+
+        return (
+            clean("data-type"),
+            clean("provincia"),
+            clean("municipio"),
+            clean("variable"),
+            clean("start_date"),
+            clean("end_date"),
+            clean("agregacion")
+        )
