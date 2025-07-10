@@ -1,4 +1,5 @@
-from dash import Input, Output, html, dcc
+from dash import Input, Output, html, dcc, State
+from dash.exceptions import PreventUpdate
 import plotly.express as px
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 import uuid
 from pages.tracking import log_interaction_by_username
+from urllib.parse import parse_qs
 
 def register_callbacks(app):
     @app.callback(
@@ -55,7 +57,7 @@ def register_callbacks(app):
 
         username = user_data if isinstance(user_data, str) else None
         log_interaction_by_username(username, "cyclones", "cyclone-dropdown", name)
-        
+
         fig = px.line_mapbox(df, lat='lat', lon='lon', hover_data=['iso_time', 'usa_status'],
                             color_discrete_sequence=['blue'], zoom=4, height=400)
         fig.update_layout(mapbox_style='open-street-map')
@@ -121,7 +123,7 @@ def register_callbacks(app):
         df['step'] = df.groupby('name').cumcount()
         username = user_data if isinstance(user_data, str) else None
         log_interaction_by_username(username, "cyclones", "all-cyclones-paths", f"Comparación temporada {start_year}-{end_year}")
-        
+
         fig_paths = px.line_mapbox(df, lat='lat', lon='lon', color='name', hover_data=['step'],
                                    zoom=3, height=400)
         fig_paths.update_layout(mapbox_style='open-street-map')
@@ -130,3 +132,76 @@ def register_callbacks(app):
         pres_fig = px.line(df, x='step', y='usa_pres', color='name', title='Comparación de Presión')
 
         return fig_paths, wind_fig, pres_fig
+    
+    from pages.tracking import save_view_by_username 
+
+    @app.callback(
+        Output("feedback-guardar-vista-ciclones", "children"),
+        Input("guardar-vista-btn-ciclones", "n_clicks"),
+        State("season-slider", "value"),
+        State("cyclone-dropdown", "value"),
+        State("nombre-vista-ciclones", "value"),
+        State("user-session", "data"),
+        prevent_initial_call=True
+    )
+    def guardar_vista_ciclones(n_clicks, temporada, ciclón, nombre_vista, username):
+        if not nombre_vista:
+            return "Introduce un nombre para la vista."
+
+        estado = {
+            "season-slider": temporada,
+            "cyclone-dropdown": ciclón
+        }
+
+        success, mensaje = save_view_by_username(username, "cyclones", nombre_vista, estado)
+        return mensaje
+    
+    @app.callback(
+        Output("season-slider", "value"),
+        Output("cyclone-dropdown", "value"),
+        Input("url", "search"),
+        Input("url", "pathname")
+    )
+    def apply_saved_view(query_string, pathname):
+        if pathname != "/cyclones":
+            raise PreventUpdate
+
+        if not query_string:
+            raise PreventUpdate
+
+        params = parse_qs(query_string.lstrip("?"))
+
+        parsed = {k: v if len(v) > 1 else v[0] for k, v in params.items()}
+
+        season_raw = parsed.get("season-slider", [2000, 2024])
+        if isinstance(season_raw, str):
+            season_slider = list(map(int, season_raw.split(",")))
+        elif isinstance(season_raw, list):
+            season_slider = list(map(int, season_raw))
+        else:
+            season_slider = [2000, 2024]
+
+        cyclone_value = parsed.get("cyclone-dropdown", None)
+        if isinstance(cyclone_value, list):
+            cyclone_value = cyclone_value[0]
+
+        return season_slider, cyclone_value
+    
+    @app.callback(
+        Output("url", "search", allow_duplicate=True),
+        Input("season-slider", "value"),
+        Input("cyclone-dropdown", "value"),
+        prevent_initial_call=True
+    )
+    def update_url_from_inputs(season, cyclone):
+        params = {
+            "season-slider": season,
+            "cyclone-dropdown": cyclone
+        }
+
+        query_string = "?" + "&".join(
+            f"{k}={','.join(map(str, v)) if isinstance(v, list) else v}"
+            for k, v in params.items() if v is not None
+        )
+
+        return query_string
