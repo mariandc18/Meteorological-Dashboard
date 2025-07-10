@@ -101,3 +101,13 @@ class UserInteraction(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     user = relationship("User", backref="interactions")
+    
+class SavedView(Base):
+    __tablename__ = 'saved_views'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    page = Column(String, nullable=False)
+    name = Column(String, nullable=False) 
+    params = Column(Text, nullable=False) 
+    timestamp = Column(DateTime, default=datetime.utcnow)
