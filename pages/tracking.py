@@ -27,3 +27,27 @@ def log_interaction_by_username(username, page, component_id, value):
         log_interaction(user.id, page, component_id, value)
 
     session.close()
+    
+def save_view_by_username(username, page, view_name, estado_dict):
+    session = get_db_session()
+    user = session.query(User).filter_by(username=username).first()
+    if not user:
+        print(f" Usuario no encontrado: {username}")
+        session.close()
+        return False, "Usuario no encontrado."
+
+    if not view_name:
+        return False, "Debes introducir un nombre para la vista."
+
+    vista = SavedView(
+        id=uuid.uuid4(),
+        user_id=user.id,
+        page=page,
+        name=view_name,
+        params=json.dumps(estado_dict),
+        timestamp=datetime.utcnow()
+    )
+    session.add(vista)
+    session.commit()
+    session.close()
+    return True, f"✅ Vista '{view_name}' guardada correctamente."
