@@ -16,6 +16,14 @@ cyclone_layout = html.Div([
 ),
 
     html.Br(),
+
+    html.Label("Nombre para guardar esta vista:"),
+    dcc.Input(id="nombre-vista-ciclones", placeholder="Ej: Temporada 2000-2005", type="text"),
+
+    html.Button("Guardar vista", id="guardar-vista-btn-ciclones", n_clicks=0),
+
+    html.Div(id="feedback-guardar-vista-ciclones"),
+
     
     html.H3("Comparación de todos los ciclones en la temporada"),
     dcc.Graph(id='all-cyclones-paths'),
