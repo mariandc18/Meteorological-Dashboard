@@ -26,3 +26,13 @@ Flask==3.0.3
 matplotlib-inline==0.1.7
 uuid==1.30
 dotenv
+google-ai-generativelanguage==0.6.15
+google-api-core==2.25.1
+google-api-python-client==2.176.0
+google-auth==2.40.3
+google-auth-httplib2==0.2.0
+google-generativeai==0.8.5
+googleapis-common-protos==1.70.0
+redis==6.2.0
+upstash-redis 
+dash-table  
