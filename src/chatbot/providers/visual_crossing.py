@@ -1,7 +1,7 @@
 import requests
 from typing import List
 from datetime import datetime
-from models.forecast import ForecastData, Location
+from src.chatbot.models.forecast import ForecastData, Location
 
 class VisualCrossingProvider():
     BASE_URL = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline"

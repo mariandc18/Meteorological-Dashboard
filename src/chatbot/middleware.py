@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import List, Dict, Tuple
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass
-from models.forecast import ForecastData, Location
+from src.chatbot.models.forecast import ForecastData, Location
 
 @dataclass
 class AggregatedForecast:

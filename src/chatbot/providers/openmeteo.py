@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List
-from models.forecast import ForecastData, Location
+from src.chatbot.models.forecast import ForecastData, Location
 import openmeteo_requests
 import pandas as pd
 import requests

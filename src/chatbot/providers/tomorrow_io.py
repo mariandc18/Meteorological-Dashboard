@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 from typing import List
-from models.forecast import ForecastData, Location
+from src.chatbot.models.forecast import ForecastData, Location
 #from src.providers.weather_provider import WeatherProvider
 
 class TomorrowProvider():
